@@ -1,24 +1,23 @@
 package com.smartcampus.smart_campus_api.model;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
 import jakarta.validation.constraints.*;
 import lombok.Data;
 
 @Data
-@Entity
-@Table(name = "resource")
+@Document(collection = "resource")
 
 public class Resource {
     
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
 
     @NotBlank(message = "Resource name is required")
     private String name;
 
-    @NotBlank(message = "Resource type is required")
-    private String type;
+    @NotNull(message = "Resource type is required")
+    private ResourceType type;
 
     @Min(value = 1, message = "Capacity must be at least 1")
     private int capacity;
@@ -28,7 +27,6 @@ public class Resource {
 
     private String availabilityWindows;
 
-    @Enumerated(EnumType.STRING)
     private ResourceStatus status = ResourceStatus.AVAILABLE;
     
 
