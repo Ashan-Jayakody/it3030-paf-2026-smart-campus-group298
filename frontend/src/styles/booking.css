@@ -193,7 +193,8 @@ body {
 }
 
 .form-group input,
-.form-group textarea {
+.form-group textarea,
+.form-group select {
   width: 100%;
   border: 1px solid #d8dee8;
   border-radius: 10px;
@@ -222,7 +223,8 @@ body {
 }
 
 .form-group input:focus,
-.form-group textarea:focus {
+.form-group textarea:focus,
+.form-group select:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
@@ -257,6 +259,45 @@ body {
 .primary-btn:disabled {
   opacity: 0.7;
   cursor: not-allowed;
+}
+
+.resource-preview {
+  margin-top: 4px;
+  border: 1px solid var(--border);
+  background: #f8fbff;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.resource-preview-header h3 {
+  margin: 0 0 14px;
+  font-size: 16px;
+  color: var(--text);
+}
+
+.resource-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.resource-preview-grid div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.resource-label {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.resource-preview-grid strong {
+  font-size: 14px;
+  color: var(--text);
 }
 
 .my-bookings-list {
@@ -341,6 +382,20 @@ body {
 
 .booking-table tbody tr:hover {
   background: #fafcff;
+}
+
+.booking-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.booking-cell-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
 .booking-id {
@@ -474,7 +529,8 @@ body {
   }
 
   .stats-grid,
-  .form-grid {
+  .form-grid,
+  .resource-preview-grid {
     grid-template-columns: 1fr;
   }
 

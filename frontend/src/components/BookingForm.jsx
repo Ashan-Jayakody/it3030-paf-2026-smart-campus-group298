@@ -1,6 +1,12 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import axios from "axios";
+
+const RESOURCE_API = "http://localhost:8080/api/resources";
 
 export default function BookingForm({ onSubmit, loading, defaultUserId }) {
+  const [resources, setResources] = useState([]);
+  const [resourceLoading, setResourceLoading] = useState(false);
+
   const [formData, setFormData] = useState({
     resourceId: "",
     userId: defaultUserId || "USER-001",
@@ -13,10 +19,34 @@ export default function BookingForm({ onSubmit, loading, defaultUserId }) {
 
   const [errors, setErrors] = useState({});
 
+  useEffect(() => {
+    const fetchResources = async () => {
+      try {
+        setResourceLoading(true);
+        const response = await axios.get(RESOURCE_API);
+        setResources(response.data || []);
+      } catch (error) {
+        console.error("Failed to load resources", error);
+      } finally {
+        setResourceLoading(false);
+      }
+    };
+
+    fetchResources();
+  }, []);
+
+  const activeResources = useMemo(() => {
+    return resources.filter((resource) => resource.status === "ACTIVE");
+  }, [resources]);
+
+  const selectedResource = useMemo(() => {
+    return resources.find((resource) => resource.id === formData.resourceId) || null;
+  }, [resources, formData.resourceId]);
+
   const validate = () => {
     const newErrors = {};
 
-    if (!formData.resourceId.trim()) newErrors.resourceId = "Resource ID is required";
+    if (!formData.resourceId.trim()) newErrors.resourceId = "Please select a resource";
     if (!formData.userId.trim()) newErrors.userId = "User ID is required";
     if (!formData.date) newErrors.date = "Date is required";
     if (!formData.startTime) newErrors.startTime = "Start time is required";
@@ -33,6 +63,18 @@ export default function BookingForm({ onSubmit, loading, defaultUserId }) {
       formData.startTime >= formData.endTime
     ) {
       newErrors.endTime = "End time must be later than start time";
+    }
+
+    if (
+      selectedResource &&
+      formData.expectedAttendees &&
+      Number(formData.expectedAttendees) > Number(selectedResource.capacity || 0)
+    ) {
+      newErrors.expectedAttendees = `Attendees cannot exceed resource capacity (${selectedResource.capacity})`;
+    }
+
+    if (selectedResource && selectedResource.status !== "ACTIVE") {
+      newErrors.resourceId = "Selected resource is not available for booking";
     }
 
     setErrors(newErrors);
@@ -86,14 +128,23 @@ export default function BookingForm({ onSubmit, loading, defaultUserId }) {
       <form className="booking-form" onSubmit={handleSubmit}>
         <div className="form-grid">
           <div className="form-group">
-            <label>Resource ID</label>
-            <input
-              type="text"
+            <label>Select Resource</label>
+            <select
               name="resourceId"
-              placeholder="e.g. LAB-01"
               value={formData.resourceId}
               onChange={handleChange}
-            />
+              disabled={resourceLoading}
+            >
+              <option value="">
+                {resourceLoading ? "Loading resources..." : "Choose a resource"}
+              </option>
+
+              {activeResources.map((resource) => (
+                <option key={resource.id} value={resource.id}>
+                  {resource.name} • {resource.type} • {resource.location}
+                </option>
+              ))}
+            </select>
             {errors.resourceId && <small>{errors.resourceId}</small>}
           </div>
 
@@ -155,6 +206,37 @@ export default function BookingForm({ onSubmit, loading, defaultUserId }) {
           </div>
         </div>
 
+        {selectedResource && (
+          <div className="resource-preview">
+            <div className="resource-preview-header">
+              <h3>Selected Resource Details</h3>
+            </div>
+
+            <div className="resource-preview-grid">
+              <div>
+                <span className="resource-label">Name</span>
+                <strong>{selectedResource.name}</strong>
+              </div>
+              <div>
+                <span className="resource-label">Type</span>
+                <strong>{selectedResource.type}</strong>
+              </div>
+              <div>
+                <span className="resource-label">Location</span>
+                <strong>{selectedResource.location}</strong>
+              </div>
+              <div>
+                <span className="resource-label">Capacity</span>
+                <strong>{selectedResource.capacity}</strong>
+              </div>
+              <div>
+                <span className="resource-label">Status</span>
+                <strong>{selectedResource.status}</strong>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="form-group full-width">
           <label>Purpose</label>
           <textarea
@@ -167,7 +249,7 @@ export default function BookingForm({ onSubmit, loading, defaultUserId }) {
           {errors.purpose && <small>{errors.purpose}</small>}
         </div>
 
-        <button className="primary-btn" type="submit" disabled={loading}>
+        <button className="primary-btn" type="submit" disabled={loading || resourceLoading}>
           {loading ? "Creating Booking..." : "Create Booking"}
         </button>
       </form>

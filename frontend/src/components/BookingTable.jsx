@@ -6,11 +6,17 @@ export default function BookingTable({
   onCancel,
   onDelete,
 }) {
+  const shortId = (id) => {
+    if (!id) return "";
+    if (id.length <= 10) return id;
+    return `${id.slice(0, 6)}...${id.slice(-4)}`;
+  };
+
   return (
     <div className="card table-card">
       <div className="card-header">
         <h2>All Bookings</h2>
-        <p>Review booking requests and perform workflow actions.</p>
+        <p>Review booking requests and manage the workflow from one place.</p>
       </div>
 
       {loading ? (
@@ -22,10 +28,11 @@ export default function BookingTable({
           <table className="booking-table">
             <thead>
               <tr>
+                <th>Booking</th>
                 <th>Resource</th>
                 <th>User</th>
                 <th>Date</th>
-                <th>Time</th>
+                <th>Time Slot</th>
                 <th>Purpose</th>
                 <th>Attendees</th>
                 <th>Status</th>
@@ -37,20 +44,64 @@ export default function BookingTable({
               {bookings.map((booking) => (
                 <tr key={booking.id}>
                   <td>
-                    <strong>{booking.resourceId}</strong>
+                    <div className="booking-cell">
+                      <span className="booking-cell-label">ID</span>
+                      <strong className="booking-id" title={booking.id}>
+                        {shortId(booking.id)}
+                      </strong>
+                    </div>
                   </td>
-                  <td>{booking.userId}</td>
-                  <td>{booking.date}</td>
+
                   <td>
-                    {booking.startTime} - {booking.endTime}
+                    <div className="booking-cell">
+                      <span className="booking-cell-label">Resource</span>
+                      <strong>{booking.resourceId}</strong>
+                    </div>
                   </td>
-                  <td>{booking.purpose}</td>
-                  <td>{booking.expectedAttendees}</td>
+
+                  <td>
+                    <div className="booking-cell">
+                      <span className="booking-cell-label">User</span>
+                      <span>{booking.userId}</span>
+                    </div>
+                  </td>
+
+                  <td>
+                    <div className="booking-cell">
+                      <span className="booking-cell-label">Date</span>
+                      <span>{booking.date}</span>
+                    </div>
+                  </td>
+
+                  <td>
+                    <div className="booking-cell">
+                      <span className="booking-cell-label">Time</span>
+                      <span>
+                        {booking.startTime} - {booking.endTime}
+                      </span>
+                    </div>
+                  </td>
+
+                  <td>
+                    <div className="booking-cell">
+                      <span className="booking-cell-label">Purpose</span>
+                      <span>{booking.purpose}</span>
+                    </div>
+                  </td>
+
+                  <td>
+                    <div className="booking-cell">
+                      <span className="booking-cell-label">Count</span>
+                      <strong>{booking.expectedAttendees}</strong>
+                    </div>
+                  </td>
+
                   <td>
                     <span className={`status-badge ${booking.status?.toLowerCase()}`}>
                       {booking.status}
                     </span>
                   </td>
+
                   <td>
                     <div className="action-buttons">
                       <button
