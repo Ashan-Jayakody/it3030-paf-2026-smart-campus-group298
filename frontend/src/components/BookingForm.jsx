@@ -168,7 +168,7 @@ export default function BookingForm({ onSubmit, loading, defaultUserId }) {
         </div>
 
         <button className="primary-btn" type="submit" disabled={loading}>
-          {loading ? "Submitting..." : "Create Booking"}
+          {loading ? "Creating Booking..." : "Create Booking"}
         </button>
       </form>
     </div>
