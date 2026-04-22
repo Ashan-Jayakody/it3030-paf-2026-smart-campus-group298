@@ -11,6 +11,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -26,14 +27,7 @@ public class BookingService {
 
     public Booking createBooking(CreateBookingRequest request) {
         validateBookingRequest(request);
-
-        checkConflict(
-                request.getResourceId(),
-                request.getDate(),
-                request.getStartTime().toString(),
-                request.getEndTime().toString(),
-                null
-        );
+        checkConflict(request.getResourceId(), request.getDate(), request.getStartTime(), request.getEndTime(), null);
 
         Booking booking = new Booking();
         booking.setResourceId(request.getResourceId().trim());
@@ -101,13 +95,7 @@ public class BookingService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only pending bookings can be approved");
         }
 
-        checkConflict(
-                booking.getResourceId(),
-                booking.getDate(),
-                booking.getStartTime().toString(),
-                booking.getEndTime().toString(),
-                booking.getId()
-        );
+        checkConflict(booking.getResourceId(), booking.getDate(), booking.getStartTime(), booking.getEndTime(), booking.getId());
 
         booking.setStatus(BookingStatus.APPROVED);
         booking.setRejectionReason(null);
@@ -136,10 +124,7 @@ public class BookingService {
         Booking booking = getBookingById(bookingId);
 
         if (booking.getStatus() != BookingStatus.APPROVED && booking.getStatus() != BookingStatus.PENDING) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Only approved or pending bookings can be cancelled"
-            );
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only approved or pending bookings can be cancelled");
         }
 
         booking.setStatus(BookingStatus.CANCELLED);
@@ -155,10 +140,7 @@ public class BookingService {
         Booking booking = getBookingById(bookingId);
 
         if (booking.getStatus() == BookingStatus.APPROVED) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Approved bookings cannot be deleted. Cancel them instead."
-            );
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Approved bookings cannot be deleted. Cancel them instead.");
         }
 
         bookingRepository.delete(booking);
@@ -179,15 +161,9 @@ public class BookingService {
         }
     }
 
-    public void checkConflict(String resourceId, LocalDate date, String startTime, String endTime, String ignoreBookingId) {
-        List<Booking> approvedBookings = bookingRepository.findByResourceIdAndDateAndStatus(
-                resourceId.trim(),
-                date,
-                BookingStatus.APPROVED
-        );
-
-        var newStart = java.time.LocalTime.parse(startTime);
-        var newEnd = java.time.LocalTime.parse(endTime);
+    private void checkConflict(String resourceId, LocalDate date, LocalTime newStart, LocalTime newEnd, String ignoreBookingId) {
+        List<Booking> approvedBookings =
+                bookingRepository.findByResourceIdAndDateAndStatus(resourceId, date, BookingStatus.APPROVED);
 
         for (Booking existing : approvedBookings) {
             if (ignoreBookingId != null && ignoreBookingId.equals(existing.getId())) {

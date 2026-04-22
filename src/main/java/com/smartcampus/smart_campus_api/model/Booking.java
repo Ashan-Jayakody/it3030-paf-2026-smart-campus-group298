@@ -36,18 +36,6 @@ public class Booking {
     public Booking() {
     }
 
-    public Booking(String resourceId, String userId, LocalDate date, LocalTime startTime, LocalTime endTime,
-                   String purpose, Integer expectedAttendees, BookingStatus status) {
-        this.resourceId = resourceId;
-        this.userId = userId;
-        this.date = date;
-        this.startTime = startTime;
-        this.endTime = endTime;
-        this.purpose = purpose;
-        this.expectedAttendees = expectedAttendees;
-        this.status = status;
-    }
-
     public String getId() {
         return id;
     }
@@ -136,15 +124,7 @@ public class Booking {
         return createdAt;
     }
 
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
-    }
-
-    public void setUpdatedAt(LocalDateTime updatedAt) {
-        this.updatedAt = updatedAt;
     }
 }
