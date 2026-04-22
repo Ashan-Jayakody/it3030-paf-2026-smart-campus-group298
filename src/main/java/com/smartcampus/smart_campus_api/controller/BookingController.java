@@ -1,14 +1,16 @@
 package com.smartcampus.smart_campus_api.controller;
 
-import com.smartcampus.smart_campus_api.dto.BookingActionDTO;
-import com.smartcampus.smart_campus_api.dto.BookingRequestDTO;
+import com.smartcampus.smart_campus_api.dto.CancelBookingRequest;
+import com.smartcampus.smart_campus_api.dto.CreateBookingRequest;
+import com.smartcampus.smart_campus_api.dto.RejectBookingRequest;
 import com.smartcampus.smart_campus_api.model.Booking;
 import com.smartcampus.smart_campus_api.service.BookingService;
 import jakarta.validation.Valid;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -23,39 +25,48 @@ public class BookingController {
     }
 
     @PostMapping
-    public ResponseEntity<Booking> createBooking(@Valid @RequestBody BookingRequestDTO requestDTO) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(bookingService.createBooking(requestDTO));
+    @ResponseStatus(HttpStatus.CREATED)
+    public Booking createBooking(@Valid @RequestBody CreateBookingRequest request) {
+        return bookingService.createBooking(request);
+    }
+
+    @GetMapping("/my")
+    public List<Booking> getMyBookings(@RequestParam String userId) {
+        return bookingService.getMyBookings(userId);
     }
 
     @GetMapping
-    public ResponseEntity<List<Booking>> getAllBookings() {
-        return ResponseEntity.ok(bookingService.getAllBookings());
+    public List<Booking> getAllBookings(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String resourceId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
+    ) {
+        return bookingService.getAllBookings(status, resourceId, date);
     }
 
-    @GetMapping("/{bookingId}")
-    public ResponseEntity<Booking> getBookingById(@PathVariable Long bookingId) {
-        return ResponseEntity.ok(bookingService.getBookingById(bookingId));
+    @GetMapping("/{id}")
+    public Booking getBookingById(@PathVariable String id) {
+        return bookingService.getBookingById(id);
     }
 
-    @GetMapping("/my/{userId}")
-    public ResponseEntity<List<Booking>> getMyBookings(@PathVariable Long userId) {
-        return ResponseEntity.ok(bookingService.getMyBookings(userId));
+    @PatchMapping("/{id}/approve")
+    public Booking approveBooking(@PathVariable String id) {
+        return bookingService.approveBooking(id);
     }
 
-    @PatchMapping("/{bookingId}/approve")
-    public ResponseEntity<Booking> approveBooking(@PathVariable Long bookingId) {
-        return ResponseEntity.ok(bookingService.approveBooking(bookingId));
+    @PatchMapping("/{id}/reject")
+    public Booking rejectBooking(@PathVariable String id, @Valid @RequestBody RejectBookingRequest request) {
+        return bookingService.rejectBooking(id, request.getReason());
     }
 
-    @PatchMapping("/{bookingId}/reject")
-    public ResponseEntity<Booking> rejectBooking(@PathVariable Long bookingId,
-                                                 @RequestBody BookingActionDTO actionDTO) {
-        return ResponseEntity.ok(bookingService.rejectBooking(bookingId, actionDTO));
+    @PatchMapping("/{id}/cancel")
+    public Booking cancelBooking(@PathVariable String id, @RequestBody(required = false) CancelBookingRequest request) {
+        return bookingService.cancelBooking(id, request);
     }
 
-    @PatchMapping("/{bookingId}/cancel")
-    public ResponseEntity<Booking> cancelBooking(@PathVariable Long bookingId,
-                                                 @RequestBody BookingActionDTO actionDTO) {
-        return ResponseEntity.ok(bookingService.cancelBooking(bookingId, actionDTO));
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteBooking(@PathVariable String id) {
+        bookingService.deleteBooking(id);
     }
 }
