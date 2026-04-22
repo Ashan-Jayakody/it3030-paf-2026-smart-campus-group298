@@ -1,11 +1,11 @@
-import axios from 'axios'
+import httpClient from './httpClient'
 
-const BASE = '/api/resources'
+const BASE = '/resources'
 
-export const getAllResources  = ()         => axios.get(BASE)
-export const getResourceById  = (id)       => axios.get(`${BASE}/${id}`)
-export const createResource   = (data)     => axios.post(BASE, data)
-export const updateResource   = (id, data) => axios.put(`${BASE}/${id}`, data)
-export const deleteResource   = (id)       => axios.delete(`${BASE}/${id}`)
-export const searchResources  = (params)   => axios.get(`${BASE}/search`, { params })
-export const getResourceCatalog = ()       => axios.get(`${BASE}/catalog`)
+export const getAllResources = () => httpClient.get(BASE)
+export const getResourceById = (id) => httpClient.get(`${BASE}/${id}`)
+export const createResource = (data) => httpClient.post(BASE, data)
+export const updateResource = (id, data) => httpClient.put(`${BASE}/${id}`, data)
+export const deleteResource = (id) => httpClient.delete(`${BASE}/${id}`)
+export const searchResources = (params) => httpClient.get(`${BASE}/search`, { params })
+export const getResourceCatalog = () => httpClient.get(`${BASE}/catalog`)
