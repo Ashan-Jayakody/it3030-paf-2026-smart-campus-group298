@@ -22,7 +22,6 @@ export default function BookingTable({
           <table className="booking-table">
             <thead>
               <tr>
-                <th>Booking ID</th>
                 <th>Resource</th>
                 <th>User</th>
                 <th>Date</th>
@@ -37,8 +36,9 @@ export default function BookingTable({
             <tbody>
               {bookings.map((booking) => (
                 <tr key={booking.id}>
-                  <td className="booking-id">{booking.id}</td>
-                  <td>{booking.resourceId}</td>
+                  <td>
+                    <strong>{booking.resourceId}</strong>
+                  </td>
                   <td>{booking.userId}</td>
                   <td>{booking.date}</td>
                   <td>
