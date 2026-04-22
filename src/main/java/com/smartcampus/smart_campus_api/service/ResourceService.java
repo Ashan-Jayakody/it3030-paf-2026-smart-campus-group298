@@ -1,71 +1,54 @@
 package com.smartcampus.smart_campus_api.service;
 
 import com.smartcampus.smart_campus_api.model.Resource;
-import com.smartcampus.smart_campus_api.repository.ResourceRepository;
 import com.smartcampus.smart_campus_api.model.ResourceStatus;
-import jakarta.persistence.EntityNotFoundException;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.smartcampus.smart_campus_api.repository.ResourceRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
+
 import java.util.List;
 
 @Service
 public class ResourceService {
 
-    @Autowired
-    private ResourceRepository resourceRepository;
+    private final ResourceRepository resourceRepository;
 
-    // GET all resources
-    public List<Resource> findAll() {
+    public ResourceService(ResourceRepository resourceRepository) {
+        this.resourceRepository = resourceRepository;
+    }
+
+    public List<Resource> getAllResources() {
         return resourceRepository.findAll();
     }
 
-    // GET one resource by ID
-    public Resource findById(Long id) {
+    public Resource getResourceById(String id) {
         return resourceRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Resource not found with id: " + id));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Resource not found"));
     }
 
-    // POST create new resource
-    public Resource create(Resource resource) {
-        resource.setStatus(ResourceStatus.AVAILABLE);
+    public Resource createResource(Resource resource) {
+        if (resource.getStatus() == null) {
+            resource.setStatus(ResourceStatus.ACTIVE);
+        }
         return resourceRepository.save(resource);
     }
 
-    // PUT update existing resource
-    public Resource update(Long id, Resource updatedResource) {
-        Resource existing = findById(id);
-        existing.setName(updatedResource.getName());
-        existing.setType(updatedResource.getType());
-        existing.setCapacity(updatedResource.getCapacity());
-        existing.setLocation(updatedResource.getLocation());
-        existing.setAvailabilityWindows(updatedResource.getAvailabilityWindows());
-        existing.setStatus(updatedResource.getStatus());
-        return resourceRepository.save(existing);
+    public Resource updateResource(String id, Resource updatedResource) {
+        Resource resource = getResourceById(id);
+
+        resource.setName(updatedResource.getName());
+        resource.setType(updatedResource.getType());
+        resource.setCapacity(updatedResource.getCapacity());
+        resource.setLocation(updatedResource.getLocation());
+        resource.setAvailabilityWindows(updatedResource.getAvailabilityWindows());
+        resource.setStatus(updatedResource.getStatus());
+
+        return resourceRepository.save(resource);
     }
 
-    // DELETE
-    public void delete(Long id) {
-        Resource existing = findById(id);
-        resourceRepository.delete(existing);
-    }
-
-    // filter by type
-    public List<Resource> findByType(String type) {
-        return resourceRepository.findByType(type);
-    }
-
-    // filter by status
-    public List<Resource> findByStatus(ResourceStatus status) {
-        return resourceRepository.findByStatus(status);
-    }
-
-    // filter by location
-    public List<Resource> findByLocation(String location) {
-        return resourceRepository.findByLocation(location);
-    }
-
-    // filter by capacity  
-    public List<Resource> findByMinCapacity(int capacity) {
-        return resourceRepository.findByCapacityGreaterThanEqual(capacity);
+    public void deleteResource(String id) {
+        Resource resource = getResourceById(id);
+        resourceRepository.delete(resource);
     }
 }

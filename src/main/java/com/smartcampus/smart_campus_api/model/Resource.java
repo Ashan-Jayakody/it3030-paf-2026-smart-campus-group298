@@ -1,35 +1,75 @@
 package com.smartcampus.smart_campus_api.model;
 
-import jakarta.persistence.*;
-import jakarta.validation.constraints.*;
-import lombok.Data;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
 
-@Data
-@Entity
-@Table(name = "resource")
+import java.util.List;
 
+@Document(collection = "resources")
 public class Resource {
-    
+
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
 
-    @NotBlank(message = "Resource name is required")
     private String name;
-
-    @NotBlank(message = "Resource type is required")
     private String type;
-
-    @Min(value = 1, message = "Capacity must be at least 1")
-    private int capacity;
-
-    @NotBlank(message = "Location is required")
+    private Integer capacity;
     private String location;
+    private List<String> availabilityWindows;
+    private ResourceStatus status;
 
-    private String availabilityWindows;
+    public Resource() {
+    }
 
-    @Enumerated(EnumType.STRING)
-    private ResourceStatus status = ResourceStatus.AVAILABLE;
-    
+    public String getId() {
+        return id;
+    }
 
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
+    }
+
+    public Integer getCapacity() {
+        return capacity;
+    }
+
+    public void setCapacity(Integer capacity) {
+        this.capacity = capacity;
+    }
+
+    public String getLocation() {
+        return location;
+    }
+
+    public void setLocation(String location) {
+        this.location = location;
+    }
+
+    public List<String> getAvailabilityWindows() {
+        return availabilityWindows;
+    }
+
+    public void setAvailabilityWindows(List<String> availabilityWindows) {
+        this.availabilityWindows = availabilityWindows;
+    }
+
+    public ResourceStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(ResourceStatus status) {
+        this.status = status;
+    }
 }

@@ -1,18 +1,19 @@
 package com.smartcampus.smart_campus_api.repository;
 
 import com.smartcampus.smart_campus_api.model.Resource;
-import com.smartcampus.smart_campus_api.model.ResourceStatus;
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
+
 import java.util.List;
 
 @Repository
+public interface ResourceRepository extends MongoRepository<Resource, String> {
 
-public interface ResourceRepository extends JpaRepository<Resource, Long> {
-    List<Resource> findByType(String type);
-    List<Resource> findByLocation(String location);
-    List<Resource> findByStatus(ResourceStatus status);
-    List<Resource> findByCapacityGreaterThanEqual(int capacity);
-    
-    
+    List<Resource> findByTypeIgnoreCase(String type);
+
+    List<Resource> findByLocationIgnoreCase(String location);
+
+    List<Resource> findByCapacityGreaterThanEqual(Integer capacity);
+
+    List<Resource> findByTypeIgnoreCaseAndLocationIgnoreCase(String type, String location);
 }
