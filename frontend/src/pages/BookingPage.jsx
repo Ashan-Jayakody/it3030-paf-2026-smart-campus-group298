@@ -4,6 +4,7 @@ import BookingForm from "../components/BookingForm";
 import BookingStats from "../components/BookingStats";
 import BookingTable from "../components/BookingTable";
 import MyBookings from "../components/MyBookings";
+import ActionModal from "../components/ActionModal";
 import "../styles/booking.css";
 
 const API_BASE = "http://localhost:8080/api/bookings";
@@ -14,7 +15,15 @@ export default function BookingPage() {
   const [myBookings, setMyBookings] = useState([]);
   const [formLoading, setFormLoading] = useState(false);
   const [tableLoading, setTableLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
+  const [activeFilter, setActiveFilter] = useState("ALL");
+
+  const [modalState, setModalState] = useState({
+    open: false,
+    type: "",
+    bookingId: null,
+  });
 
   const fetchAllBookings = async () => {
     try {
@@ -60,6 +69,11 @@ export default function BookingPage() {
     };
   }, [bookings]);
 
+  const filteredBookings = useMemo(() => {
+    if (activeFilter === "ALL") return bookings;
+    return bookings.filter((booking) => booking.status === activeFilter);
+  }, [bookings, activeFilter]);
+
   const handleCreateBooking = async (payload) => {
     try {
       setFormLoading(true);
@@ -98,35 +112,45 @@ export default function BookingPage() {
     }
   };
 
-  const handleReject = async (id) => {
-    const reason = window.prompt("Enter rejection reason:");
-    if (!reason) return;
-
-    try {
-      await axios.patch(`${API_BASE}/${id}/reject`, { reason });
-      setMessage({ type: "success", text: "Booking rejected successfully." });
-      await refreshData();
-    } catch (error) {
-      setMessage({
-        type: "error",
-        text: error.response?.data?.message || "Failed to reject booking.",
-      });
-    }
+  const openRejectModal = (id) => {
+    setModalState({ open: true, type: "reject", bookingId: id });
   };
 
-  const handleCancel = async (id) => {
-    const reason = window.prompt("Enter cancellation reason:");
-    if (!reason) return;
+  const openCancelModal = (id) => {
+    setModalState({ open: true, type: "cancel", bookingId: id });
+  };
+
+  const closeModal = () => {
+    setModalState({ open: false, type: "", bookingId: null });
+  };
+
+  const handleModalConfirm = async (reason) => {
+    if (!modalState.bookingId || !modalState.type) return;
 
     try {
-      await axios.patch(`${API_BASE}/${id}/cancel`, { reason });
-      setMessage({ type: "success", text: "Booking cancelled successfully." });
+      setActionLoading(true);
+
+      if (modalState.type === "reject") {
+        await axios.patch(`${API_BASE}/${modalState.bookingId}/reject`, { reason });
+        setMessage({ type: "success", text: "Booking rejected successfully." });
+      }
+
+      if (modalState.type === "cancel") {
+        await axios.patch(`${API_BASE}/${modalState.bookingId}/cancel`, { reason });
+        setMessage({ type: "success", text: "Booking cancelled successfully." });
+      }
+
+      closeModal();
       await refreshData();
     } catch (error) {
       setMessage({
         type: "error",
-        text: error.response?.data?.message || "Failed to cancel booking.",
+        text:
+          error.response?.data?.message ||
+          `Failed to ${modalState.type} booking.`,
       });
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -145,6 +169,28 @@ export default function BookingPage() {
       });
     }
   };
+
+  const modalTitle =
+    modalState.type === "reject" ? "Reject Booking" : "Cancel Booking";
+
+  const modalLabel =
+    modalState.type === "reject"
+      ? "Enter rejection reason"
+      : "Enter cancellation reason";
+
+  const modalButtonText =
+    modalState.type === "reject" ? "Reject Booking" : "Cancel Booking";
+
+  const modalButtonClass =
+    modalState.type === "reject" ? "danger-btn" : "warning-btn";
+
+  const filterTabs = [
+    { label: "All", value: "ALL" },
+    { label: "Pending", value: "PENDING" },
+    { label: "Approved", value: "APPROVED" },
+    { label: "Rejected", value: "REJECTED" },
+    { label: "Cancelled", value: "CANCELLED" },
+  ];
 
   return (
     <div className="booking-page">
@@ -175,13 +221,36 @@ export default function BookingPage() {
           <MyBookings bookings={myBookings} />
         </div>
 
+        <div className="filter-tabs">
+          {filterTabs.map((tab) => (
+            <button
+              key={tab.value}
+              className={`filter-tab ${activeFilter === tab.value ? "active" : ""}`}
+              onClick={() => setActiveFilter(tab.value)}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
         <BookingTable
-          bookings={bookings}
+          bookings={filteredBookings}
           loading={tableLoading}
           onApprove={handleApprove}
-          onReject={handleReject}
-          onCancel={handleCancel}
+          onReject={openRejectModal}
+          onCancel={openCancelModal}
           onDelete={handleDelete}
+        />
+
+        <ActionModal
+          open={modalState.open}
+          title={modalTitle}
+          label={modalLabel}
+          confirmText={modalButtonText}
+          confirmClass={modalButtonClass}
+          loading={actionLoading}
+          onClose={closeModal}
+          onConfirm={handleModalConfirm}
         />
       </div>
     </div>
