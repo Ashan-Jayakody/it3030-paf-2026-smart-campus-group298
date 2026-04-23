@@ -4,9 +4,11 @@ import {
   Check,
   CircleAlert,
   CircleSlash,
+  Eye,
   Trash2,
   X,
 } from "lucide-react";
+import "../styles/bookings.css";
 
 const BOOKINGS_API = "http://localhost:8080/api/bookings";
 const RESOURCES_API = "http://localhost:8080/api/resources";
@@ -170,6 +172,92 @@ function ReasonViewModal({ open, title, reason, onClose }) {
   );
 }
 
+function BookingDetailsModal({ open, booking, onClose }) {
+  if (!open || !booking) return null;
+
+  return (
+    <div className="uf-modal-overlay">
+      <div className="uf-modal-card uf-details-modal">
+        <div className="uf-modal-header">
+          <h3>Booking Details</h3>
+          <button type="button" className="uf-modal-close" onClick={onClose}>
+            ×
+          </button>
+        </div>
+
+        <div className="uf-details-grid">
+          <div className="uf-detail-item">
+            <span>Resource</span>
+            <strong>{booking.resourceName}</strong>
+          </div>
+
+          <div className="uf-detail-item">
+            <span>Type</span>
+            <strong>{booking.resourceType || "-"}</strong>
+          </div>
+
+          <div className="uf-detail-item">
+            <span>Location</span>
+            <strong>{booking.resourceLocation || "-"}</strong>
+          </div>
+
+          <div className="uf-detail-item">
+            <span>User ID</span>
+            <strong>{booking.userId}</strong>
+          </div>
+
+          <div className="uf-detail-item">
+            <span>Date</span>
+            <strong>{booking.date}</strong>
+          </div>
+
+          <div className="uf-detail-item">
+            <span>Time</span>
+            <strong>{booking.time}</strong>
+          </div>
+
+          <div className="uf-detail-item">
+            <span>Expected Attendees</span>
+            <strong>{booking.expectedAttendees}</strong>
+          </div>
+
+          <div className="uf-detail-item">
+            <span>Status</span>
+            <div className="uf-detail-status-wrap">
+              <StatusBadge status={booking.status} />
+            </div>
+          </div>
+        </div>
+
+        <div className="uf-detail-block">
+          <span>Purpose</span>
+          <p>{booking.purpose || "-"}</p>
+        </div>
+
+        {booking.rejectionReason ? (
+          <div className="uf-detail-block uf-detail-block--danger">
+            <span>Rejection Reason</span>
+            <p>{booking.rejectionReason}</p>
+          </div>
+        ) : null}
+
+        {booking.cancelReason ? (
+          <div className="uf-detail-block uf-detail-block--warning">
+            <span>Cancellation Reason</span>
+            <p>{booking.cancelReason}</p>
+          </div>
+        ) : null}
+
+        <div className="uf-modal-actions">
+          <button type="button" className="uf-btn-secondary" onClick={onClose}>
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function normalizeBooking(booking) {
   return {
     id: booking.id,
@@ -178,10 +266,6 @@ function normalizeBooking(booking) {
     date: booking.date || "-",
     startTime: booking.startTime || "",
     endTime: booking.endTime || "",
-    time:
-      booking.startTime && booking.endTime
-        ? `${booking.startTime.slice(0, 5)} - ${booking.endTime.slice(0, 5)}`
-        : "-",
     purpose: booking.purpose || "-",
     status: booking.status || "PENDING",
     rejectionReason: booking.rejectionReason || "",
@@ -204,6 +288,51 @@ function normalizeResource(resource) {
   };
 }
 
+function formatTimeRange(startTime, endTime) {
+  if (!startTime || !endTime) return "-";
+  return `${startTime.slice(0, 5)} - ${endTime.slice(0, 5)}`;
+}
+
+function sortBookings(list, sortBy) {
+  const sorted = [...list];
+
+  if (sortBy === "date_desc") {
+    sorted.sort((a, b) => {
+      const aKey = `${a.date} ${a.startTime}`;
+      const bKey = `${b.date} ${b.startTime}`;
+      return bKey.localeCompare(aKey);
+    });
+  }
+
+  if (sortBy === "date_asc") {
+    sorted.sort((a, b) => {
+      const aKey = `${a.date} ${a.startTime}`;
+      const bKey = `${b.date} ${b.startTime}`;
+      return aKey.localeCompare(bKey);
+    });
+  }
+
+  if (sortBy === "status") {
+    const order = {
+      PENDING: 1,
+      APPROVED: 2,
+      REJECTED: 3,
+      CANCELLED: 4,
+    };
+    sorted.sort((a, b) => {
+      const aRank = order[a.status] || 99;
+      const bRank = order[b.status] || 99;
+      if (aRank !== bRank) return aRank - bRank;
+
+      const aKey = `${a.date} ${a.startTime}`;
+      const bKey = `${b.date} ${b.startTime}`;
+      return bKey.localeCompare(aKey);
+    });
+  }
+
+  return sorted;
+}
+
 export default function BookingsPage() {
   const [bookings, setBookings] = useState([]);
   const [resources, setResources] = useState([]);
@@ -211,6 +340,9 @@ export default function BookingsPage() {
   const [activeTab, setActiveTab] = useState("mine");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [dateFilter, setDateFilter] = useState("");
+  const [resourceFilter, setResourceFilter] = useState("ALL");
+  const [sortBy, setSortBy] = useState("date_desc");
   const [actionLoading, setActionLoading] = useState(false);
 
   const [actionModalState, setActionModalState] = useState({
@@ -223,6 +355,11 @@ export default function BookingsPage() {
     open: false,
     title: "",
     reason: "",
+  });
+
+  const [detailsState, setDetailsState] = useState({
+    open: false,
+    booking: null,
   });
 
   const [confirmState, setConfirmState] = useState({
@@ -301,12 +438,32 @@ export default function BookingsPage() {
       const resource = resourceMap[booking.resourceId];
       return {
         ...booking,
+        time: formatTimeRange(booking.startTime, booking.endTime),
         resourceName: resource?.name || booking.resourceId,
         resourceType: resource?.type || "",
         resourceLocation: resource?.location || "",
       };
     });
   }, [bookings, resourceMap]);
+
+  const resourceOptions = useMemo(() => {
+    return [...resources].sort((a, b) => a.name.localeCompare(b.name));
+  }, [resources]);
+
+  const summaryStats = useMemo(() => {
+    const source =
+      activeTab === "mine"
+        ? enhancedBookings.filter((item) => item.userId === CURRENT_USER_ID)
+        : enhancedBookings;
+
+    return {
+      total: source.length,
+      pending: source.filter((item) => item.status === "PENDING").length,
+      approved: source.filter((item) => item.status === "APPROVED").length,
+      rejected: source.filter((item) => item.status === "REJECTED").length,
+      cancelled: source.filter((item) => item.status === "CANCELLED").length,
+    };
+  }, [enhancedBookings, activeTab]);
 
   const filteredBookings = useMemo(() => {
     let data = enhancedBookings;
@@ -317,6 +474,14 @@ export default function BookingsPage() {
 
     if (statusFilter !== "ALL") {
       data = data.filter((item) => item.status === statusFilter);
+    }
+
+    if (dateFilter) {
+      data = data.filter((item) => item.date === dateFilter);
+    }
+
+    if (resourceFilter !== "ALL") {
+      data = data.filter((item) => item.resourceId === resourceFilter);
     }
 
     const query = search.trim().toLowerCase();
@@ -331,8 +496,24 @@ export default function BookingsPage() {
       );
     }
 
-    return data;
-  }, [enhancedBookings, activeTab, statusFilter, search]);
+    return sortBookings(data, sortBy);
+  }, [
+    enhancedBookings,
+    activeTab,
+    statusFilter,
+    dateFilter,
+    resourceFilter,
+    search,
+    sortBy,
+  ]);
+
+  const clearFilters = () => {
+    setSearch("");
+    setStatusFilter("ALL");
+    setDateFilter("");
+    setResourceFilter("ALL");
+    setSortBy("date_desc");
+  };
 
   const openRejectModal = (id) => {
     setActionModalState({ open: true, type: "reject", bookingId: id });
@@ -359,6 +540,20 @@ export default function BookingsPage() {
       open: false,
       title: "",
       reason: "",
+    });
+  };
+
+  const openDetailsModal = (booking) => {
+    setDetailsState({
+      open: true,
+      booking,
+    });
+  };
+
+  const closeDetailsModal = () => {
+    setDetailsState({
+      open: false,
+      booking: null,
     });
   };
 
@@ -516,13 +711,13 @@ export default function BookingsPage() {
     return (
       <div className="uf-status-inline">
         <StatusBadge status={item.status} />
-
         {reasonText ? (
           <button
             className="uf-status-info-btn"
             onClick={() => openReasonView(reasonTitle, reasonText)}
             title="View reason"
             disabled={actionLoading}
+            type="button"
           >
             <CircleAlert size={16} />
           </button>
@@ -540,7 +735,16 @@ export default function BookingsPage() {
 
     return (
       <div className="uf-action-stack">
-        <div className="uf-row-actions-icons">
+        <div className="uf-row-actions-icons uf-row-actions-icons--five">
+          <button
+            className="uf-icon-btn view"
+            onClick={() => openDetailsModal(item)}
+            title="View details"
+            type="button"
+          >
+            <Eye size={18} />
+          </button>
+
           <button
             className="uf-icon-btn approve"
             onClick={() =>
@@ -555,6 +759,7 @@ export default function BookingsPage() {
             }
             disabled={actionLoading || !isPending}
             title={isPending ? "Approve booking" : "Only pending bookings can be approved"}
+            type="button"
           >
             <Check size={18} />
           </button>
@@ -564,6 +769,7 @@ export default function BookingsPage() {
             onClick={() => openRejectModal(item.id)}
             disabled={actionLoading || !isPending}
             title={isPending ? "Reject booking" : "Only pending bookings can be rejected"}
+            type="button"
           >
             <X size={18} />
           </button>
@@ -577,6 +783,7 @@ export default function BookingsPage() {
                 ? "Cancelled or rejected bookings cannot be cancelled again"
                 : "Cancel booking"
             }
+            type="button"
           >
             <CircleSlash size={18} />
           </button>
@@ -595,6 +802,7 @@ export default function BookingsPage() {
             }
             disabled={actionLoading}
             title="Delete booking"
+            type="button"
           >
             <Trash2 size={18} />
           </button>
@@ -605,7 +813,10 @@ export default function BookingsPage() {
 
   return (
     <div className="uf-page-shell">
-      <Toast toast={toast} onClose={() => setToast((prev) => ({ ...prev, show: false }))} />
+      <Toast
+        toast={toast}
+        onClose={() => setToast((prev) => ({ ...prev, show: false }))}
+      />
 
       <div className="uf-page">
         <div className="uf-page-top">
@@ -629,18 +840,43 @@ export default function BookingsPage() {
           <button
             className={`uf-tab ${activeTab === "mine" ? "active" : ""}`}
             onClick={() => setActiveTab("mine")}
+            type="button"
           >
             My Bookings
           </button>
           <button
             className={`uf-tab ${activeTab === "all" ? "active" : ""}`}
             onClick={() => setActiveTab("all")}
+            type="button"
           >
             All Bookings
           </button>
         </div>
 
-        <div className="uf-toolbar">
+        <div className="uf-summary-grid">
+          <div className="uf-summary-card">
+            <span>Total Bookings</span>
+            <strong>{summaryStats.total}</strong>
+          </div>
+          <div className="uf-summary-card pending">
+            <span>Pending</span>
+            <strong>{summaryStats.pending}</strong>
+          </div>
+          <div className="uf-summary-card approved">
+            <span>Approved</span>
+            <strong>{summaryStats.approved}</strong>
+          </div>
+          <div className="uf-summary-card rejected">
+            <span>Rejected</span>
+            <strong>{summaryStats.rejected}</strong>
+          </div>
+          <div className="uf-summary-card cancelled">
+            <span>Cancelled</span>
+            <strong>{summaryStats.cancelled}</strong>
+          </div>
+        </div>
+
+        <div className="uf-toolbar uf-toolbar--advanced">
           <div className="uf-search-box">
             <span className="uf-search-icon">⌕</span>
             <input
@@ -662,6 +898,44 @@ export default function BookingsPage() {
             <option value="REJECTED">Rejected</option>
             <option value="CANCELLED">Cancelled</option>
           </select>
+
+          <input
+            type="date"
+            className="uf-filter-input"
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+          />
+
+          <select
+            className="uf-status-select"
+            value={resourceFilter}
+            onChange={(e) => setResourceFilter(e.target.value)}
+          >
+            <option value="ALL">All Resources</option>
+            {resourceOptions.map((resource) => (
+              <option key={resource.id} value={resource.id}>
+                {resource.name}
+              </option>
+            ))}
+          </select>
+
+          <select
+            className="uf-status-select"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+          >
+            <option value="date_desc">Newest First</option>
+            <option value="date_asc">Oldest First</option>
+            <option value="status">Sort by Status</option>
+          </select>
+
+          <button
+            type="button"
+            className="uf-clear-btn"
+            onClick={clearFilters}
+          >
+            Clear Filters
+          </button>
         </div>
 
         <div className="uf-table-shell">
@@ -713,9 +987,7 @@ export default function BookingsPage() {
                     <td>{item.time}</td>
                     <td>{item.purpose}</td>
                     <td>{item.expectedAttendees}</td>
-
                     <td>{renderStatusCell(item)}</td>
-
                     <td className="uf-actions-col">{renderActions(item)}</td>
                   </tr>
                 ))
@@ -747,6 +1019,12 @@ export default function BookingsPage() {
         title={viewReasonState.title}
         reason={viewReasonState.reason}
         onClose={closeReasonView}
+      />
+
+      <BookingDetailsModal
+        open={detailsState.open}
+        booking={detailsState.booking}
+        onClose={closeDetailsModal}
       />
 
       <ConfirmModal

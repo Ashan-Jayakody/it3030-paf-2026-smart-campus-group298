@@ -37,6 +37,17 @@ function normalizeResource(resource) {
   };
 }
 
+function normalizeBooking(booking) {
+  return {
+    id: booking.id,
+    resourceId: booking.resourceId || "",
+    date: booking.date || "",
+    startTime: booking.startTime ? booking.startTime.slice(0, 5) : "",
+    endTime: booking.endTime ? booking.endTime.slice(0, 5) : "",
+    status: booking.status || "PENDING",
+  };
+}
+
 function getTodayDateString() {
   const now = new Date();
   const year = now.getFullYear();
@@ -72,10 +83,29 @@ function formatDuration(startTime, endTime) {
   return `${minutes} minute${minutes > 1 ? "s" : ""}`;
 }
 
+function hasTimeOverlap(startA, endA, startB, endB) {
+  const aStart = toMinutes(startA);
+  const aEnd = toMinutes(endA);
+  const bStart = toMinutes(startB);
+  const bEnd = toMinutes(endB);
+
+  if (
+    aStart === null ||
+    aEnd === null ||
+    bStart === null ||
+    bEnd === null
+  ) {
+    return false;
+  }
+
+  return aStart < bEnd && aEnd > bStart;
+}
+
 export default function NewBookingPage() {
   const navigate = useNavigate();
 
   const [resources, setResources] = useState([]);
+  const [bookings, setBookings] = useState([]);
   const [loadingResources, setLoadingResources] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -93,6 +123,13 @@ export default function NewBookingPage() {
   const [toast, setToast] = useState({
     show: false,
     type: "success",
+    message: "",
+  });
+
+  const [availability, setAvailability] = useState({
+    checking: false,
+    checked: false,
+    available: false,
     message: "",
   });
 
@@ -128,26 +165,44 @@ export default function NewBookingPage() {
   };
 
   useEffect(() => {
-    const fetchResources = async () => {
+    const fetchInitialData = async () => {
       try {
         setLoadingResources(true);
 
-        const response = await fetch(RESOURCES_API);
-        if (!response.ok) {
+        const [resourcesResponse, bookingsResponse] = await Promise.all([
+          fetch(RESOURCES_API),
+          fetch(BOOKINGS_API),
+        ]);
+
+        if (!resourcesResponse.ok) {
           throw new Error("Failed to load resources");
         }
 
-        const data = await response.json();
-        const normalized = Array.isArray(data) ? data.map(normalizeResource) : [];
-        setResources(normalized.filter((item) => item.status === "ACTIVE"));
+        if (!bookingsResponse.ok) {
+          throw new Error("Failed to load bookings");
+        }
+
+        const resourcesData = await resourcesResponse.json();
+        const bookingsData = await bookingsResponse.json();
+
+        const normalizedResources = Array.isArray(resourcesData)
+          ? resourcesData.map(normalizeResource)
+          : [];
+
+        const normalizedBookings = Array.isArray(bookingsData)
+          ? bookingsData.map(normalizeBooking)
+          : [];
+
+        setResources(normalizedResources.filter((item) => item.status === "ACTIVE"));
+        setBookings(normalizedBookings);
       } catch (error) {
-        showToast("error", error.message || "Failed to load resources.");
+        showToast("error", error.message || "Failed to load page data.");
       } finally {
         setLoadingResources(false);
       }
     };
 
-    fetchResources();
+    fetchInitialData();
   }, []);
 
   const getFieldError = (fieldName, value, draft) => {
@@ -260,7 +315,6 @@ export default function NewBookingPage() {
     setForm(nextForm);
 
     const nextErrors = { ...errors };
-
     nextErrors[name] = touched[name] ? getFieldError(name, value, nextForm) : "";
 
     if (name === "date" || name === "startTime" || name === "endTime") {
@@ -302,6 +356,71 @@ export default function NewBookingPage() {
     }));
   };
 
+  useEffect(() => {
+    const canCheck =
+      form.resourceId &&
+      form.date &&
+      form.startTime &&
+      form.endTime &&
+      !getFieldError("resourceId", form.resourceId, form) &&
+      !getFieldError("date", form.date, form) &&
+      !getFieldError("startTime", form.startTime, form) &&
+      !getFieldError("endTime", form.endTime, form);
+
+    if (!canCheck) {
+      setAvailability({
+        checking: false,
+        checked: false,
+        available: false,
+        message: "",
+      });
+      return;
+    }
+
+    setAvailability({
+      checking: true,
+      checked: false,
+      available: false,
+      message: "Checking availability...",
+    });
+
+    const timer = setTimeout(() => {
+      const relevantBookings = bookings.filter(
+        (booking) =>
+          booking.resourceId === form.resourceId &&
+          booking.date === form.date &&
+          (booking.status === "PENDING" || booking.status === "APPROVED")
+      );
+
+      const conflictBooking = relevantBookings.find((booking) =>
+        hasTimeOverlap(
+          form.startTime,
+          form.endTime,
+          booking.startTime,
+          booking.endTime
+        )
+      );
+
+      if (conflictBooking) {
+        setAvailability({
+          checking: false,
+          checked: true,
+          available: false,
+          message: `Conflict: this resource is already booked from ${conflictBooking.startTime} to ${conflictBooking.endTime}.`,
+        });
+      } else {
+        setAvailability({
+          checking: false,
+          checked: true,
+          available: true,
+          message: "Available slot. No booking conflict found.",
+        });
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [form.resourceId, form.date, form.startTime, form.endTime, bookings]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -318,6 +437,16 @@ export default function NewBookingPage() {
     const isValid = validateAll();
     if (!isValid) {
       showToast("error", "Please fix the highlighted form errors.");
+      return;
+    }
+
+    if (availability.checking) {
+      showToast("error", "Please wait until availability check completes.");
+      return;
+    }
+
+    if (availability.checked && !availability.available) {
+      showToast("error", "This time slot has a booking conflict.");
       return;
     }
 
@@ -373,9 +502,12 @@ export default function NewBookingPage() {
       !getFieldError("startTime", form.startTime, form) &&
       !getFieldError("endTime", form.endTime, form) &&
       !getFieldError("purpose", form.purpose, form) &&
-      !getFieldError("expectedAttendees", form.expectedAttendees, form)
+      !getFieldError("expectedAttendees", form.expectedAttendees, form) &&
+      availability.checked &&
+      availability.available &&
+      !availability.checking
     );
-  }, [form, selectedResource, today, currentTime]);
+  }, [form, selectedResource, today, currentTime, availability]);
 
   return (
     <div className="uf-page-shell">
@@ -383,121 +515,155 @@ export default function NewBookingPage() {
 
       <div className="uf-page">
         <div className="uf-form-wrap">
-          <form className="uf-booking-form-card" onSubmit={handleSubmit}>
-            <div className="uf-form-header">
+          <form
+            className="uf-booking-form-card uf-booking-form-card--polished"
+            onSubmit={handleSubmit}
+          >
+            <div className="uf-form-header uf-form-header--compact">
               <h2>New Booking</h2>
-              <p>Create a new resource booking request with real-time validation.</p>
             </div>
 
-            <div className="uf-form-group">
-              <label>Resource *</label>
-              <select
-                value={form.resourceId}
-                onChange={(e) => updateField("resourceId", e.target.value)}
-                onBlur={() => handleBlur("resourceId")}
-                disabled={loadingResources}
-              >
-                <option value="">
-                  {loadingResources ? "Loading resources..." : "Select a resource..."}
-                </option>
-                {resources.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.label}
+            <section className="uf-form-section">
+              <div className="uf-section-header">
+                <h3>Resource Details</h3>
+              </div>
+
+              <div className="uf-form-group">
+                <label>Resource *</label>
+                <select
+                  value={form.resourceId}
+                  onChange={(e) => updateField("resourceId", e.target.value)}
+                  onBlur={() => handleBlur("resourceId")}
+                  disabled={loadingResources}
+                >
+                  <option value="">
+                    {loadingResources ? "Loading resources..." : "Select a resource..."}
                   </option>
-                ))}
-              </select>
-              {errors.resourceId ? <small>{errors.resourceId}</small> : null}
-            </div>
-
-            {selectedResource ? (
-              <div className="uf-resource-info">
-                <div>
-                  <span>Type</span>
-                  <strong>{selectedResource.type || "-"}</strong>
-                </div>
-                <div>
-                  <span>Capacity</span>
-                  <strong>{selectedResource.capacity || "-"}</strong>
-                </div>
-                <div>
-                  <span>Location</span>
-                  <strong>{selectedResource.location || "-"}</strong>
-                </div>
+                  {resources.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+                {errors.resourceId ? <small>{errors.resourceId}</small> : null}
               </div>
-            ) : null}
 
-            <div className="uf-form-group">
-              <label>Date *</label>
-              <input
-                type="date"
-                min={today}
-                value={form.date}
-                onChange={(e) => updateField("date", e.target.value)}
-                onBlur={() => handleBlur("date")}
-              />
-              {errors.date ? <small>{errors.date}</small> : null}
-            </div>
+              {selectedResource ? (
+                <div className="uf-resource-info uf-resource-info--polished">
+                  <div>
+                    <span>Type</span>
+                    <strong>{selectedResource.type || "-"}</strong>
+                  </div>
+                  <div>
+                    <span>Capacity</span>
+                    <strong>{selectedResource.capacity || "-"}</strong>
+                  </div>
+                  <div>
+                    <span>Location</span>
+                    <strong>{selectedResource.location || "-"}</strong>
+                  </div>
+                </div>
+              ) : null}
+            </section>
 
-            <div className="uf-form-row">
-              <div className="uf-form-group">
-                <label>Start Time *</label>
-                <input
-                  type="time"
-                  value={form.startTime}
-                  onChange={(e) => updateField("startTime", e.target.value)}
-                  onBlur={() => handleBlur("startTime")}
-                />
-                {errors.startTime ? <small>{errors.startTime}</small> : null}
+            <section className="uf-form-section">
+              <div className="uf-section-header">
+                <h3>Schedule</h3>
               </div>
 
               <div className="uf-form-group">
-                <label>End Time *</label>
+                <label>Date *</label>
                 <input
-                  type="time"
-                  value={form.endTime}
-                  onChange={(e) => updateField("endTime", e.target.value)}
-                  onBlur={() => handleBlur("endTime")}
+                  type="date"
+                  min={today}
+                  value={form.date}
+                  onChange={(e) => updateField("date", e.target.value)}
+                  onBlur={() => handleBlur("date")}
                 />
-                {errors.endTime ? <small>{errors.endTime}</small> : null}
+                {errors.date ? <small>{errors.date}</small> : null}
               </div>
-            </div>
 
-            {durationText ? (
-              <div className="uf-live-helper">Booking duration: {durationText}</div>
-            ) : null}
+              <div className="uf-form-row">
+                <div className="uf-form-group">
+                  <label>Start Time *</label>
+                  <input
+                    type="time"
+                    value={form.startTime}
+                    onChange={(e) => updateField("startTime", e.target.value)}
+                    onBlur={() => handleBlur("startTime")}
+                  />
+                  {errors.startTime ? <small>{errors.startTime}</small> : null}
+                </div>
 
-            <div className="uf-form-group">
-              <label>Purpose *</label>
-              <textarea
-                rows="4"
-                placeholder="Describe the purpose of your booking..."
-                value={form.purpose}
-                onChange={(e) => updateField("purpose", e.target.value)}
-                onBlur={() => handleBlur("purpose")}
-              />
-              {errors.purpose ? <small>{errors.purpose}</small> : null}
-            </div>
-
-            <div className="uf-form-group">
-              <label>Expected Attendees *</label>
-              <input
-                type="number"
-                min="1"
-                placeholder="Number of attendees"
-                value={form.expectedAttendees}
-                onChange={(e) => updateField("expectedAttendees", e.target.value)}
-                onBlur={() => handleBlur("expectedAttendees")}
-              />
-              {errors.expectedAttendees ? <small>{errors.expectedAttendees}</small> : null}
-            </div>
-
-            {selectedResource?.capacity ? (
-              <div className="uf-live-helper">
-                Resource capacity: {selectedResource.capacity}
+                <div className="uf-form-group">
+                  <label>End Time *</label>
+                  <input
+                    type="time"
+                    value={form.endTime}
+                    onChange={(e) => updateField("endTime", e.target.value)}
+                    onBlur={() => handleBlur("endTime")}
+                  />
+                  {errors.endTime ? <small>{errors.endTime}</small> : null}
+                </div>
               </div>
-            ) : null}
 
-            <div className="uf-form-actions">
+              <div className="uf-helper-grid">
+                {durationText ? (
+                  <div className="uf-helper-card">
+                    <span>Duration</span>
+                    <strong>{durationText}</strong>
+                  </div>
+                ) : null}
+
+                {(availability.checking || availability.checked) && (
+                  <div
+                    className={`uf-helper-card uf-helper-card--availability ${
+                      availability.checking
+                        ? "checking"
+                        : availability.available
+                        ? "available"
+                        : "conflict"
+                    }`}
+                  >
+                    <span>Availability</span>
+                    <strong>{availability.message}</strong>
+                  </div>
+                )}
+              </div>
+            </section>
+
+            <section className="uf-form-section">
+              <div className="uf-section-header">
+                <h3>Booking Details</h3>
+              </div>
+
+              <div className="uf-form-group">
+                <label>Purpose *</label>
+                <textarea
+                  rows="5"
+                  placeholder="Example: Lab practical session for 20 students"
+                  value={form.purpose}
+                  onChange={(e) => updateField("purpose", e.target.value)}
+                  onBlur={() => handleBlur("purpose")}
+                />
+                {errors.purpose ? <small>{errors.purpose}</small> : null}
+              </div>
+
+              <div className="uf-form-group">
+                <label>Expected Attendees *</label>
+                <input
+                  type="number"
+                  min="1"
+                  placeholder="Number of attendees"
+                  value={form.expectedAttendees}
+                  onChange={(e) => updateField("expectedAttendees", e.target.value)}
+                  onBlur={() => handleBlur("expectedAttendees")}
+                />
+                {errors.expectedAttendees ? <small>{errors.expectedAttendees}</small> : null}
+              </div>
+            </section>
+
+            <div className="uf-form-actions uf-form-actions--polished">
               <Link to="/bookings" className="uf-cancel-btn">
                 Cancel
               </Link>
@@ -506,7 +672,11 @@ export default function NewBookingPage() {
                 className="uf-submit-btn"
                 disabled={submitting || !isFormValid}
               >
-                {submitting ? "Submitting..." : "Submit Request"}
+                {submitting
+                  ? "Submitting..."
+                  : availability.checking
+                  ? "Checking..."
+                  : "Submit Request"}
               </button>
             </div>
           </form>

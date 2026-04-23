@@ -9,6 +9,7 @@
   --text-main: #334155;
   --text-muted: #64748b;
   --border: #e2e8f0;
+  --border-soft: #edf2f7;
   --shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
 
   --approve: #16a34a;
@@ -25,6 +26,9 @@
 
   --info: #2563eb;
   --info-bg: #dbeafe;
+
+  --view: #0f766e;
+  --view-bg: #ccfbf1;
 
   --blue: #3b82f6;
   --blue-dark: #2563eb;
@@ -64,17 +68,19 @@ textarea {
 
 .uf-page {
   width: 100%;
-  max-width: 100%;
-  margin: 0;
-  padding: 28px 32px 36px;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 28px 20px 32px;
 }
+
+/* Bookings page */
 
 .uf-page-top {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 26px;
+  gap: 20px;
+  margin-bottom: 22px;
 }
 
 .uf-page-heading {
@@ -93,11 +99,11 @@ textarea {
 
 .uf-page-title {
   margin: 0;
-  font-size: 44px;
+  font-size: 40px;
   font-weight: 700;
   line-height: 1.08;
   letter-spacing: -0.03em;
-  color: #0f172a;
+  color: var(--text-dark);
   text-align: left;
 }
 
@@ -105,17 +111,17 @@ textarea {
   margin: 12px 0 0;
   max-width: 820px;
   font-size: 16px;
-  line-height: 1.65;
+  line-height: 1.6;
   color: var(--text-muted);
   text-align: left;
 }
 
 .uf-primary-link-btn {
-  min-height: 48px;
-  padding: 0 20px;
+  min-height: 46px;
+  padding: 0 18px;
   border-radius: 14px;
   background: var(--blue);
-  color: white;
+  color: #fff;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -140,7 +146,7 @@ textarea {
   display: flex;
   align-items: center;
   gap: 20px;
-  margin-bottom: 22px;
+  margin-bottom: 18px;
   border-bottom: 1px solid var(--border);
 }
 
@@ -161,6 +167,73 @@ textarea {
   border-bottom-color: var(--blue);
 }
 
+.uf-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.uf-summary-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 18px 18px 16px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.uf-summary-card span {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.uf-summary-card strong {
+  font-size: 28px;
+  line-height: 1;
+  color: var(--text-dark);
+}
+
+.uf-summary-card.pending {
+  background: #f8fafc;
+}
+
+.uf-summary-card.pending strong {
+  color: #475569;
+}
+
+.uf-summary-card.approved {
+  background: #ecfdf3;
+  border-color: #bbf7d0;
+}
+
+.uf-summary-card.approved strong {
+  color: #166534;
+}
+
+.uf-summary-card.rejected {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.uf-summary-card.rejected strong {
+  color: #b91c1c;
+}
+
+.uf-summary-card.cancelled {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+.uf-summary-card.cancelled strong {
+  color: #b45309;
+}
+
 .uf-toolbar {
   display: flex;
   align-items: center;
@@ -169,8 +242,12 @@ textarea {
   flex-wrap: wrap;
 }
 
+.uf-toolbar--advanced {
+  align-items: stretch;
+}
+
 .uf-search-box {
-  flex: 1 1 520px;
+  flex: 1 1 320px;
   min-height: 48px;
   border: 1px solid var(--border);
   background: #fff;
@@ -179,6 +256,7 @@ textarea {
   align-items: center;
   padding: 0 14px;
   box-shadow: var(--shadow);
+  min-width: 0;
 }
 
 .uf-search-icon {
@@ -192,20 +270,43 @@ textarea {
   outline: none;
   width: 100%;
   font-size: 15px;
-  color: #0f172a;
+  color: var(--text-dark);
   background: transparent;
+  min-width: 0;
 }
 
-.uf-status-select {
+.uf-status-select,
+.uf-filter-input {
   min-height: 48px;
   min-width: 170px;
   border: 1px solid var(--border);
   background: #fff;
   border-radius: 14px;
   padding: 0 14px;
-  color: #334155;
+  color: var(--text-main);
   box-shadow: var(--shadow);
   font-size: 14px;
+}
+
+.uf-filter-input {
+  appearance: none;
+}
+
+.uf-clear-btn {
+  min-height: 48px;
+  padding: 0 16px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: #334155;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  transition: 0.2s ease;
+}
+
+.uf-clear-btn:hover {
+  background: #f8fafc;
 }
 
 .uf-table-shell {
@@ -214,18 +315,19 @@ textarea {
   border-radius: 18px;
   overflow-x: auto;
   box-shadow: var(--shadow);
+  width: 100%;
 }
 
 .uf-table {
   width: 100%;
-  min-width: 1320px;
+  min-width: 100%;
   border-collapse: separate;
   border-spacing: 0;
   table-layout: fixed;
 }
 
 .uf-table thead th {
-  padding: 20px 18px;
+  padding: 18px 12px;
   font-size: 13px;
   font-weight: 700;
   color: #64748b;
@@ -242,11 +344,11 @@ textarea {
 }
 
 .uf-table tbody td {
-  padding: 24px 18px;
-  font-size: 15px;
-  line-height: 1.55;
+  padding: 18px 12px;
+  font-size: 14px;
+  line-height: 1.5;
   color: var(--text-main);
-  border-bottom: 1px solid #edf2f7;
+  border-bottom: 1px solid var(--border-soft);
   vertical-align: top;
   word-break: break-word;
   text-align: center;
@@ -258,41 +360,45 @@ textarea {
 
 .uf-table th:nth-child(1),
 .uf-table td:nth-child(1) {
-  width: 250px;
+  width: 18%;
 }
 
 .uf-table th:nth-child(2),
 .uf-table td:nth-child(2) {
-  width: 130px;
+  width: 9%;
 }
 
 .uf-table th:nth-child(3),
 .uf-table td:nth-child(3) {
-  width: 130px;
+  width: 10%;
 }
 
 .uf-table th:nth-child(4),
 .uf-table td:nth-child(4) {
-  width: 130px;
+  width: 10%;
 }
 
 .uf-table th:nth-child(5),
 .uf-table td:nth-child(5) {
-  width: 200px;
+  width: 13%;
 }
 
 .uf-table th:nth-child(6),
 .uf-table td:nth-child(6) {
-  width: 120px;
+  width: 8%;
 }
 
 .uf-table th:nth-child(7),
 .uf-table td:nth-child(7) {
-  width: 180px;
+  width: 12%;
+}
+
+.uf-table th:nth-child(8),
+.uf-table td:nth-child(8) {
+  width: 20%;
 }
 
 .uf-actions-col {
-  width: 200px;
   text-align: center !important;
 }
 
@@ -300,17 +406,18 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  min-height: 44px;
+  gap: 8px;
+  min-height: 40px;
   width: 100%;
+  flex-wrap: nowrap;
 }
 
 .uf-status-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 110px;
-  padding: 9px 14px;
+  min-width: 100px;
+  padding: 8px 12px;
   border-radius: 999px;
   font-size: 12px;
   font-weight: 700;
@@ -339,8 +446,8 @@ textarea {
 }
 
 .uf-status-info-btn {
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   border: none;
   border-radius: 999px;
   background: var(--info-bg);
@@ -364,8 +471,8 @@ textarea {
 }
 
 .uf-status-info-placeholder {
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   display: inline-block;
   flex-shrink: 0;
   visibility: hidden;
@@ -375,20 +482,25 @@ textarea {
   display: flex;
   flex-direction: column;
   align-items: center;
+  width: 100%;
 }
 
 .uf-row-actions-icons {
   display: grid;
-  grid-template-columns: repeat(4, 42px);
-  gap: 8px;
+  grid-template-columns: repeat(4, 36px);
+  gap: 6px;
   justify-content: center;
 }
 
+.uf-row-actions-icons--five {
+  grid-template-columns: repeat(5, 36px);
+}
+
 .uf-icon-btn {
-  width: 42px;
-  height: 42px;
+  width: 36px;
+  height: 36px;
   border: none;
-  border-radius: 12px;
+  border-radius: 10px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -398,6 +510,11 @@ textarea {
 
 .uf-icon-btn svg {
   stroke-width: 2.2;
+}
+
+.uf-icon-btn.view {
+  background: var(--view-bg);
+  color: var(--view);
 }
 
 .uf-icon-btn.approve {
@@ -434,8 +551,8 @@ textarea {
 .uf-resource-meta {
   margin-top: 8px;
   font-size: 12px;
-  line-height: 1.5;
-  color: #64748b;
+  line-height: 1.45;
+  color: var(--text-muted);
   font-weight: 600;
   white-space: normal;
 }
@@ -443,9 +560,80 @@ textarea {
 .uf-empty-cell {
   text-align: center;
   color: #94a3b8;
-  padding: 46px 16px !important;
+  padding: 40px 16px !important;
   font-size: 14px;
 }
+
+/* Booking details modal */
+
+.uf-details-modal {
+  max-width: 720px;
+}
+
+.uf-details-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.uf-detail-item {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.uf-detail-item span,
+.uf-detail-block span {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.uf-detail-item strong {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-dark);
+}
+
+.uf-detail-status-wrap {
+  display: flex;
+  align-items: center;
+}
+
+.uf-detail-block {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 14px;
+}
+
+.uf-detail-block p {
+  margin: 8px 0 0;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--text-main);
+  white-space: pre-wrap;
+}
+
+.uf-detail-block--danger {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.uf-detail-block--warning {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+/* New booking page */
 
 .uf-form-wrap {
   display: flex;
@@ -456,29 +644,50 @@ textarea {
 .uf-booking-form-card {
   width: 100%;
   max-width: 860px;
-  background: white;
+  background: #fff;
   border: 1px solid var(--border);
   border-radius: 18px;
   box-shadow: var(--shadow);
   padding: 30px 28px 26px;
 }
 
+.uf-booking-form-card--polished {
+  max-width: 920px;
+  padding: 30px 28px 24px;
+}
+
 .uf-form-header {
   margin-bottom: 22px;
 }
 
-.uf-form-header h2 {
-  margin: 0 0 8px;
-  font-size: 30px;
-  line-height: 1.2;
-  color: #0f172a;
+.uf-form-header--compact {
+  margin-bottom: 20px;
 }
 
-.uf-form-header p {
+.uf-form-header h2 {
   margin: 0;
-  font-size: 15px;
-  line-height: 1.6;
-  color: var(--text-muted);
+  font-size: 30px;
+  line-height: 1.2;
+  color: var(--text-dark);
+}
+
+.uf-form-section {
+  border: 1px solid var(--border-soft);
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 18px;
+}
+
+.uf-section-header {
+  margin-bottom: 14px;
+}
+
+.uf-section-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-dark);
 }
 
 .uf-form-row {
@@ -491,6 +700,10 @@ textarea {
   display: flex;
   flex-direction: column;
   margin-bottom: 18px;
+}
+
+.uf-form-section .uf-form-group:last-child {
+  margin-bottom: 0;
 }
 
 .uf-form-group label {
@@ -510,13 +723,13 @@ textarea {
   background: #fff;
   padding: 12px 14px;
   font-size: 15px;
-  color: #0f172a;
+  color: var(--text-dark);
   outline: none;
   transition: 0.2s ease;
 }
 
 .uf-form-group textarea {
-  min-height: 100px;
+  min-height: 120px;
   resize: vertical;
 }
 
@@ -545,6 +758,11 @@ textarea {
   margin-bottom: 18px;
 }
 
+.uf-resource-info--polished {
+  margin-bottom: 0;
+  padding: 16px 18px;
+}
+
 .uf-resource-info div {
   display: flex;
   flex-direction: column;
@@ -554,23 +772,86 @@ textarea {
 .uf-resource-info span {
   font-size: 11px;
   font-weight: 700;
-  color: #64748b;
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
 
 .uf-resource-info strong {
   font-size: 14px;
-  color: #0f172a;
+  color: var(--text-dark);
   line-height: 1.5;
 }
 
+.uf-helper-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-top: -2px;
+}
+
+.uf-helper-card {
+  background: #eff6ff;
+  border: 1px solid #dbeafe;
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.uf-helper-card span {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.uf-helper-card strong {
+  font-size: 14px;
+  line-height: 1.5;
+  color: #1e3a8a;
+}
+
+.uf-helper-card--availability.checking {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.uf-helper-card--availability.checking strong {
+  color: #1d4ed8;
+}
+
+.uf-helper-card--availability.available {
+  background: #ecfdf3;
+  border-color: #bbf7d0;
+}
+
+.uf-helper-card--availability.available strong {
+  color: #166534;
+}
+
+.uf-helper-card--availability.conflict {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.uf-helper-card--availability.conflict strong {
+  color: #991b1b;
+}
+
 .uf-form-actions {
-  border-top: 1px solid #edf2f7;
+  border-top: 1px solid var(--border-soft);
   padding-top: 20px;
   display: flex;
   justify-content: flex-end;
   gap: 12px;
+}
+
+.uf-form-actions--polished {
+  margin-top: 4px;
+  padding-top: 18px;
 }
 
 .uf-cancel-btn,
@@ -584,7 +865,7 @@ textarea {
 
 .uf-cancel-btn {
   border: 1px solid var(--border);
-  background: white;
+  background: #fff;
   color: #374151;
   display: inline-flex;
   align-items: center;
@@ -593,8 +874,10 @@ textarea {
 .uf-submit-btn {
   border: none;
   background: var(--blue);
-  color: white;
+  color: #fff;
   cursor: pointer;
+  min-width: 154px;
+  justify-content: center;
 }
 
 .uf-submit-btn:hover {
@@ -605,6 +888,8 @@ textarea {
   opacity: 0.7;
   cursor: not-allowed;
 }
+
+/* Modals */
 
 .uf-modal-overlay {
   position: fixed;
@@ -620,7 +905,7 @@ textarea {
 .uf-modal-card {
   width: 100%;
   max-width: 520px;
-  background: white;
+  background: #fff;
   border-radius: 18px;
   border: 1px solid var(--border);
   box-shadow: 0 20px 60px rgba(15, 23, 42, 0.2);
@@ -716,11 +1001,11 @@ textarea {
 
 .uf-btn-secondary {
   background: #e2e8f0;
-  color: #0f172a;
+  color: var(--text-dark);
 }
 
 .uf-btn-primary {
-  color: white;
+  color: #fff;
   background: var(--blue);
 }
 
@@ -736,6 +1021,8 @@ textarea {
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+/* Toast */
 
 .uf-toast {
   position: fixed;
@@ -801,18 +1088,21 @@ textarea {
   }
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 1200px) {
   .uf-page {
-    width: 100%;
-    padding: 22px 16px 28px;
+    padding: 24px 16px 28px;
   }
 
   .uf-page-title {
-    font-size: 34px;
+    font-size: 36px;
   }
 
   .uf-table {
-    min-width: 1320px;
+    min-width: 1160px;
+  }
+
+  .uf-summary-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
@@ -826,11 +1116,30 @@ textarea {
     padding-top: 0;
   }
 
+  .uf-form-row,
+  .uf-resource-info,
+  .uf-summary-grid,
+  .uf-details-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .uf-booking-form-card--polished {
+    padding: 22px 18px 20px;
+  }
+
+  .uf-form-section {
+    padding: 16px;
+  }
+
   .uf-page-title {
     font-size: 30px;
   }
 
   .uf-page-subtitle {
     max-width: 100%;
+  }
+
+  .uf-table {
+    min-width: 1080px;
   }
 }
