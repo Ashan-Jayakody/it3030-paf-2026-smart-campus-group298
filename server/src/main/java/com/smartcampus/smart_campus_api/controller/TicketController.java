@@ -90,6 +90,32 @@ public class TicketController {
         return ResponseEntity.ok(ticketService.assignTechnician(id, technicianId));
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<Ticket> updateTicket(
+            @PathVariable String id,
+            @RequestBody Ticket ticket,
+            @AuthenticationPrincipal Jwt jwt) {
+        
+        List<String> roles = jwt.getClaimAsStringList("roles");
+        boolean isAdmin = roles != null && roles.contains("ADMIN");
+        String userId = jwt.getSubject();
+        
+        return ResponseEntity.ok(ticketService.updateTicket(id, ticket, userId, isAdmin));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteTicket(
+            @PathVariable String id,
+            @AuthenticationPrincipal Jwt jwt) {
+        
+        List<String> roles = jwt.getClaimAsStringList("roles");
+        boolean isAdmin = roles != null && roles.contains("ADMIN");
+        String userId = jwt.getSubject();
+        
+        ticketService.deleteTicket(id, userId, isAdmin);
+        return ResponseEntity.noContent().build();
+    }
+
     // Comment Endpoints
     @GetMapping("/{id}/comments")
     public ResponseEntity<List<Comment>> getComments(@PathVariable String id) {
