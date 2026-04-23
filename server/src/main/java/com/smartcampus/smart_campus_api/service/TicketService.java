@@ -71,4 +71,44 @@ public class TicketService {
         ticket.setTechnicianId(technicianId);
         return ticketRepository.save(ticket);
     }
+
+    public Ticket updateTicket(String id, Ticket updatedData, String userId, boolean isAdmin) {
+        Ticket ticket = ticketRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Ticket not found"));
+
+        if (!isAdmin && !ticket.getCreatorId().equals(userId)) {
+            throw new IllegalArgumentException("You are not authorized to update this ticket");
+        }
+
+        // Only allow updates if the ticket is still OPEN or IN_PROGRESS (optional business rule)
+        if (ticket.getStatus() == TicketStatus.CLOSED || ticket.getStatus() == TicketStatus.RESOLVED) {
+            throw new IllegalArgumentException("Cannot update a resolved or closed ticket");
+        }
+
+        ticket.setCategory(updatedData.getCategory());
+        ticket.setDescription(updatedData.getDescription());
+        ticket.setPriority(updatedData.getPriority());
+        ticket.setContactDetails(updatedData.getContactDetails());
+        ticket.setResourceId(updatedData.getResourceId());
+        
+        if (updatedData.getAttachments() != null) {
+            if (updatedData.getAttachments().size() > 3) {
+                throw new IllegalArgumentException("Maximum 3 attachments allowed");
+            }
+            ticket.setAttachments(updatedData.getAttachments());
+        }
+
+        return ticketRepository.save(ticket);
+    }
+
+    public void deleteTicket(String id, String userId, boolean isAdmin) {
+        Ticket ticket = ticketRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Ticket not found"));
+
+        if (!isAdmin && !ticket.getCreatorId().equals(userId)) {
+            throw new IllegalArgumentException("You are not authorized to delete this ticket");
+        }
+
+        ticketRepository.delete(ticket);
+    }
 }
