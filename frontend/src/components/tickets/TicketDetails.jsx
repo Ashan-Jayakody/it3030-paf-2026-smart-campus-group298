@@ -44,6 +44,12 @@ export default function TicketDetails({ ticket, onUpdate, onClose }) {
             <div className="flex gap-2 items-center mb-1">
               <StatusBadge status={ticket.status} />
               <span className="text-[10px] font-black uppercase text-slate-400">ID: {ticket.id.slice(-6)}</span>
+              {(isAdmin || ticket.creatorId === user.id) && (
+                <div className="flex gap-2 ml-4">
+                  <button onClick={() => onUpdate('EDIT')} className="text-slate-400 hover:text-blue-500 text-[10px] font-black uppercase tracking-tighter">Edit</button>
+                  <button onClick={() => onUpdate('DELETE')} className="text-slate-400 hover:text-rose-500 text-[10px] font-black uppercase tracking-tighter">Delete</button>
+                </div>
+              )}
             </div>
             <h2 className="text-xl font-extrabold text-slate-800">{ticket.category}</h2>
           </div>
