@@ -1,42 +1,37 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { loginWithEmail, loginWithGoogle, signupWithEmail } from '../api/authApi'
+import { signInWithPopup } from 'firebase/auth'
+import { loginWithEmail, loginWithFirebase, signupWithEmail } from '../api/authApi'
 import { useAuth } from '../auth/useAuth'
+import { auth, googleProvider, isFirebaseConfigured } from '../firebase'
 
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
-const GOOGLE_SCRIPT_ID = 'google-signin-client'
+function getErrorMessage(error, fallbackMessage) {
+  const data = error?.response?.data
 
-function loadGoogleScript() {
-  return new Promise((resolve, reject) => {
-    if (window.google?.accounts?.id) {
-      resolve()
-      return
-    }
+  if (typeof data === 'string' && data.trim()) {
+    return data
+  }
 
-    const existing = document.getElementById(GOOGLE_SCRIPT_ID)
-    if (existing) {
-      existing.addEventListener('load', () => resolve(), { once: true })
-      existing.addEventListener('error', () => reject(new Error('Google script failed')), { once: true })
-      return
-    }
+  if (data && typeof data === 'object' && typeof data.message === 'string' && data.message.trim()) {
+    return data.message
+  }
 
-    const script = document.createElement('script')
-    script.id = GOOGLE_SCRIPT_ID
-    script.src = 'https://accounts.google.com/gsi/client'
-    script.async = true
-    script.defer = true
-    script.onload = () => resolve()
-    script.onerror = () => reject(new Error('Google script failed'))
-    document.body.appendChild(script)
-  })
+  if (typeof error?.message === 'string' && error.message.trim()) {
+    return error.message
+  }
+
+  return fallbackMessage
 }
 
 export default function LoginPage() {
-  const buttonRef = useRef(null)
   const navigate = useNavigate()
   const location = useLocation()
   const { user, login } = useAuth()
-  const [googleMessage, setGoogleMessage] = useState('')
+  const [googleMessage, setGoogleMessage] = useState(
+    isFirebaseConfigured
+      ? ''
+      : 'Missing Firebase config in frontend/.env. Add the VITE_FIREBASE_* values from your Firebase web app settings.'
+  )
   const [localMessage, setLocalMessage] = useState('')
   const [localMode, setLocalMode] = useState('signup')
   const [localForm, setLocalForm] = useState({ name: '', email: '', password: '', role: 'USER' })
@@ -49,53 +44,23 @@ export default function LoginPage() {
     }
   }, [user, from, navigate])
 
-  useEffect(() => {
-    let cancelled = false
-
-    const renderButton = async () => {
-      if (!GOOGLE_CLIENT_ID) {
-        setGoogleMessage('Missing VITE_GOOGLE_CLIENT_ID in frontend/.env. Create the file and add your Google OAuth client ID.')
-        return
-      }
-
-      try {
-        await loadGoogleScript()
-        if (cancelled || !buttonRef.current) return
-
-        buttonRef.current.innerHTML = ''
-
-        window.google.accounts.id.initialize({
-          client_id: GOOGLE_CLIENT_ID,
-          callback: async (response) => {
-            try {
-              setGoogleMessage('')
-              const { data } = await loginWithGoogle(response.credential)
-              login(data)
-              navigate(from, { replace: true })
-            } catch {
-              setGoogleMessage('Google login failed. Check the client ID and backend settings.')
-            }
-          },
-        })
-
-        window.google.accounts.id.renderButton(buttonRef.current, {
-          theme: 'outline',
-          size: 'large',
-          shape: 'pill',
-          text: 'signin_with',
-          width: 320,
-        })
-      } catch {
-        setGoogleMessage('Unable to load Google Sign-In.')
-      }
+  const handleGoogleSignIn = async () => {
+    if (!isFirebaseConfigured || !auth || !googleProvider) {
+      setGoogleMessage('Firebase is not configured. Add the VITE_FIREBASE_* values in frontend/.env and restart Vite.')
+      return
     }
 
-    renderButton()
-
-    return () => {
-      cancelled = true
+    try {
+      setGoogleMessage('')
+      const result = await signInWithPopup(auth, googleProvider)
+      const idToken = await result.user.getIdToken()
+      const { data } = await loginWithFirebase(idToken)
+      login(data)
+      navigate(from, { replace: true })
+    } catch (error) {
+      setGoogleMessage(getErrorMessage(error, 'Google login via Firebase failed. Check Firebase config and backend Firebase credentials.'))
     }
-  }, [from, login, navigate])
+  }
 
   const handleLocalChange = (event) => {
     const { name, value } = event.target
@@ -114,7 +79,7 @@ export default function LoginPage() {
       login(payload.data)
       navigate(from, { replace: true })
     } catch (error) {
-      setLocalMessage(error.response?.data || 'Email sign-in failed. Please check your details.')
+      setLocalMessage(getErrorMessage(error, 'Email sign-in failed. Please check your details.'))
     }
   }
 
@@ -135,7 +100,13 @@ export default function LoginPage() {
                 <p className="text-sm text-slate-500">Best for users who already have a Google account.</p>
               </div>
             </div>
-            <div className="mt-4" ref={buttonRef} />
+            <button
+              type="button"
+              onClick={handleGoogleSignIn}
+              className="mt-4 w-full px-5 py-3 rounded-xl border border-slate-300 bg-white text-slate-900 font-semibold text-sm hover:bg-slate-100 transition-colors"
+            >
+              Continue with Google
+            </button>
             {googleMessage && (
               <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
                 {googleMessage}
