@@ -5,7 +5,7 @@ import { updateTicketStatus, assignTechnician } from '../../api/ticketApi'
 import { useAuth } from '../../auth/useAuth'
 
 export default function TicketDetails({ ticket, onUpdate, onClose }) {
-  const { isAdmin } = useAuth()
+  const { user, isAdmin } = useAuth()
   const [rejectReason, setRejectReason] = useState('')
   const [showRejectForm, setShowRejectForm] = useState(false)
   const [techId, setTechId] = useState(ticket.technicianId || '')
@@ -63,7 +63,7 @@ export default function TicketDetails({ ticket, onUpdate, onClose }) {
               {ticket.description}
             </p>
             
-            <div className="grid grid-cols-2 gap-4 mt-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
               <div className="p-4 rounded-2xl border border-slate-100">
                 <span className="block text-[10px] font-black text-slate-300 uppercase mb-1">Priority</span>
                 <span className="text-sm font-bold text-slate-700">{ticket.priority}</span>
@@ -72,6 +72,12 @@ export default function TicketDetails({ ticket, onUpdate, onClose }) {
                 <span className="block text-[10px] font-black text-slate-300 uppercase mb-1">Contact</span>
                 <span className="text-sm font-bold text-slate-700">{ticket.contactDetails}</span>
               </div>
+              {ticket.technicianId && (
+                <div className="p-4 rounded-2xl border border-blue-100 bg-blue-50/30 col-span-2 md:col-span-1">
+                  <span className="block text-[10px] font-black text-blue-300 uppercase mb-1">Assigned Tech ID</span>
+                  <span className="text-sm font-bold text-blue-700">{ticket.technicianId}</span>
+                </div>
+              )}
             </div>
           </section>
 
