@@ -93,28 +93,7 @@ export default function LoginPage() {
         </p>
 
         <div className="mt-8 flex flex-col gap-8">
-          <section className="order-2 rounded-3xl border border-slate-200 bg-slate-50 p-5">
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div>
-                <h2 className="text-lg font-bold text-slate-900">Continue with Google</h2>
-                <p className="text-sm text-slate-500">Best for users who already have a Google account.</p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={handleGoogleSignIn}
-              className="mt-4 w-full px-5 py-3 rounded-xl border border-slate-300 bg-white text-slate-900 font-semibold text-sm hover:bg-slate-100 transition-colors"
-            >
-              Continue with Google
-            </button>
-            {googleMessage && (
-              <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                {googleMessage}
-              </div>
-            )}
-          </section>
-
-          <section className="order-1 rounded-3xl border border-slate-200 p-5">
+          <section className="rounded-3xl border border-slate-200 p-5">
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div>
                 <h2 className="text-lg font-bold text-slate-900">
@@ -205,6 +184,26 @@ export default function LoginPage() {
               >
                 {localMode === 'signup' ? 'Create account' : 'Sign in'}
               </button>
+
+              <button
+                type="button"
+                onClick={handleGoogleSignIn}
+                className="w-full px-5 py-3 rounded-xl border border-slate-300 bg-white text-slate-900 font-semibold text-sm hover:bg-slate-100 transition-colors inline-flex items-center justify-center gap-3"
+              >
+                <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" xmlns="http://www.w3.org/2000/svg">
+                  <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.2 1.3-1.5 3.9-5.5 3.9-3.3 0-6-2.7-6-6s2.7-6 6-6c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.8 3.5 14.6 2.5 12 2.5 6.8 2.5 2.5 6.8 2.5 12S6.8 21.5 12 21.5c6.9 0 9.2-4.8 9.2-7.3 0-.5 0-.8-.1-1.2H12z"/>
+                  <path fill="#34A853" d="M3.6 7.4l3.2 2.3C7.6 7.9 9.6 6.5 12 6.5c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.8 3.5 14.6 2.5 12 2.5 8.4 2.5 5.2 4.5 3.6 7.4z"/>
+                  <path fill="#FBBC05" d="M12 21.5c2.5 0 4.6-.8 6.2-2.3l-2.9-2.4c-.8.6-1.9 1.2-3.3 1.2-3.9 0-5.3-2.6-5.5-3.9l-3.2 2.4c1.6 3 4.8 5 8.7 5z"/>
+                  <path fill="#4285F4" d="M21.2 14.2c0-.5 0-.8-.1-1.2H12v3.9h5.5c-.2 1-.9 2.4-2.2 3.2l2.9 2.4c1.7-1.6 3-3.9 3-6.3z"/>
+                </svg>
+                Continue with Google
+              </button>
+
+              {googleMessage && (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                  {googleMessage}
+                </div>
+              )}
             </form>
 
             {localMessage && (
