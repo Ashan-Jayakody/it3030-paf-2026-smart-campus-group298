@@ -5,12 +5,11 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import jakarta.validation.constraints.*;
 import lombok.Data;
 
-
 @Data
 @Document(collection = "resource")
 
 public class Resource {
-    
+
     @Id
     private String id;
 
@@ -29,6 +28,5 @@ public class Resource {
     private String availabilityWindows;
 
     private ResourceStatus status = ResourceStatus.AVAILABLE;
-    
 
 }
