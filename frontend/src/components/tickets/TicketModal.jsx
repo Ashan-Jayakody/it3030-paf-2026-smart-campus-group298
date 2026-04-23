@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { getAllResources } from '../../api/resourceApi'
 
-export default function TicketModal({ isOpen, onClose, onSave }) {
+export default function TicketModal({ isOpen, onClose, onSave, ticket = null }) {
   const [formData, setFormData] = useState({
     resourceId: '',
     category: '',
@@ -16,8 +16,29 @@ export default function TicketModal({ isOpen, onClose, onSave }) {
   useEffect(() => {
     if (isOpen) {
       getAllResources().then(res => setResources(res.data))
+      if (ticket) {
+        setFormData({
+          resourceId: ticket.resourceId || '',
+          category: ticket.category || '',
+          description: ticket.description || '',
+          priority: ticket.priority || 'MEDIUM',
+          contactDetails: ticket.contactDetails || '',
+          attachments: ticket.attachments || []
+        })
+        setPreviews(ticket.attachments || [])
+      } else {
+        setFormData({
+          resourceId: '',
+          category: '',
+          description: '',
+          priority: 'MEDIUM',
+          contactDetails: '',
+          attachments: []
+        })
+        setPreviews([])
+      }
     }
-  }, [isOpen])
+  }, [isOpen, ticket])
 
   if (!isOpen) return null
 
@@ -59,7 +80,7 @@ export default function TicketModal({ isOpen, onClose, onSave }) {
       <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
         <form onSubmit={handleSubmit} className="p-8">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-extrabold text-slate-800">Report an Incident</h2>
+            <h2 className="text-2xl font-extrabold text-slate-800">{ticket ? 'Edit Ticket' : 'Report an Incident'}</h2>
             <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
               ✕
             </button>
@@ -159,7 +180,7 @@ export default function TicketModal({ isOpen, onClose, onSave }) {
             type="submit"
             className="w-full mt-8 py-4 rounded-xl bg-violet-600 text-white font-extrabold text-sm shadow-lg shadow-violet-200 hover:bg-violet-700 transition-colors"
           >
-            Submit Report
+            {ticket ? 'Update Ticket' : 'Submit Report'}
           </button>
         </form>
       </div>
