@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 const BOOKINGS_API = "http://localhost:8080/api/bookings";
+const RESOURCES_API = "http://localhost:8080/api/resources";
 const CURRENT_USER_ID = "USER-001";
 
 function StatusBadge({ status }) {
@@ -27,9 +28,7 @@ function ReasonModal({
   const [reason, setReason] = useState("");
 
   useEffect(() => {
-    if (open) {
-      setReason("");
-    }
+    if (open) setReason("");
   }, [open]);
 
   if (!open) return null;
@@ -97,8 +96,24 @@ function normalizeBooking(booking) {
   };
 }
 
+function normalizeResource(resource) {
+  return {
+    id: resource.id,
+    name:
+      resource.name ||
+      resource.resourceId ||
+      resource.code ||
+      resource.id ||
+      "Unnamed Resource",
+    type: resource.type || "",
+    location: resource.location || "",
+    capacity: resource.capacity ?? "",
+  };
+}
+
 export default function BookingsPage() {
   const [bookings, setBookings] = useState([]);
+  const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pageMessage, setPageMessage] = useState({ type: "", text: "" });
   const [activeTab, setActiveTab] = useState("mine");
@@ -112,21 +127,42 @@ export default function BookingsPage() {
     bookingId: "",
   });
 
+  const resourceMap = useMemo(() => {
+    const map = {};
+    resources.forEach((resource) => {
+      map[resource.id] = resource;
+    });
+    return map;
+  }, [resources]);
+
+  const fetchResources = async () => {
+    const response = await fetch(RESOURCES_API);
+    if (!response.ok) {
+      throw new Error("Failed to load resources");
+    }
+
+    const data = await response.json();
+    setResources(Array.isArray(data) ? data.map(normalizeResource) : []);
+  };
+
   const fetchBookings = async () => {
+    const response = await fetch(BOOKINGS_API);
+    if (!response.ok) {
+      throw new Error("Failed to load bookings");
+    }
+
+    const data = await response.json();
+    setBookings(Array.isArray(data) ? data.map(normalizeBooking) : []);
+  };
+
+  const loadPageData = async () => {
     try {
       setLoading(true);
-      const response = await fetch(BOOKINGS_API);
-
-      if (!response.ok) {
-        throw new Error("Failed to load bookings");
-      }
-
-      const data = await response.json();
-      setBookings(Array.isArray(data) ? data.map(normalizeBooking) : []);
+      await Promise.all([fetchBookings(), fetchResources()]);
     } catch (error) {
       setPageMessage({
         type: "error",
-        text: error.message || "Failed to load bookings",
+        text: error.message || "Failed to load page data",
       });
     } finally {
       setLoading(false);
@@ -134,11 +170,24 @@ export default function BookingsPage() {
   };
 
   useEffect(() => {
-    fetchBookings();
+    loadPageData();
   }, []);
 
+  const enhancedBookings = useMemo(() => {
+    return bookings.map((booking) => {
+      const resource = resourceMap[booking.resourceId];
+
+      return {
+        ...booking,
+        resourceName: resource?.name || booking.resourceId,
+        resourceType: resource?.type || "",
+        resourceLocation: resource?.location || "",
+      };
+    });
+  }, [bookings, resourceMap]);
+
   const filteredBookings = useMemo(() => {
-    let data = bookings;
+    let data = enhancedBookings;
 
     if (activeTab === "mine") {
       data = data.filter((item) => item.userId === CURRENT_USER_ID);
@@ -152,15 +201,17 @@ export default function BookingsPage() {
     if (query) {
       data = data.filter(
         (item) =>
+          item.resourceName.toLowerCase().includes(query) ||
           item.resourceId.toLowerCase().includes(query) ||
           item.userId.toLowerCase().includes(query) ||
           item.purpose.toLowerCase().includes(query) ||
-          item.status.toLowerCase().includes(query)
+          item.status.toLowerCase().includes(query) ||
+          item.resourceLocation.toLowerCase().includes(query)
       );
     }
 
     return data;
-  }, [bookings, activeTab, statusFilter, search]);
+  }, [enhancedBookings, activeTab, statusFilter, search]);
 
   const showMessage = (type, text) => {
     setPageMessage({ type, text });
@@ -181,7 +232,7 @@ export default function BookingsPage() {
       }
 
       showMessage("success", "Booking approved successfully.");
-      await fetchBookings();
+      await loadPageData();
     } catch (error) {
       showMessage("error", error.message || "Failed to approve booking");
     } finally {
@@ -247,7 +298,7 @@ export default function BookingsPage() {
       );
 
       closeModal();
-      await fetchBookings();
+      await loadPageData();
     } catch (error) {
       showMessage(
         "error",
@@ -277,7 +328,7 @@ export default function BookingsPage() {
       }
 
       showMessage("success", "Booking deleted successfully.");
-      await fetchBookings();
+      await loadPageData();
     } catch (error) {
       showMessage("error", error.message || "Failed to delete booking");
     } finally {
@@ -291,7 +342,10 @@ export default function BookingsPage() {
         <div className="uf-page-top">
           <div>
             <h1 className="uf-page-title">Bookings</h1>
-            <p className="uf-page-subtitle">View and manage resource bookings</p>
+            <p className="uf-page-subtitle">
+              View and manage resource bookings with approval, rejection,
+              cancellation, and conflict-aware workflow.
+            </p>
           </div>
 
           <Link to="/bookings/new" className="uf-primary-link-btn">
@@ -326,7 +380,7 @@ export default function BookingsPage() {
             <span className="uf-search-icon">⌕</span>
             <input
               type="text"
-              placeholder="Search by resource, purpose, user, or status..."
+              placeholder="Search by resource, purpose, user, location, or status..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -375,7 +429,18 @@ export default function BookingsPage() {
               ) : (
                 filteredBookings.map((item) => (
                   <tr key={item.id}>
-                    <td>{item.resourceId}</td>
+                    <td>
+                      <div>
+                        <strong>{item.resourceName}</strong>
+                        {item.resourceType || item.resourceLocation ? (
+                          <div className="uf-reason" style={{ marginTop: 6 }}>
+                            {[item.resourceType, item.resourceLocation]
+                              .filter(Boolean)
+                              .join(" • ")}
+                          </div>
+                        ) : null}
+                      </div>
+                    </td>
                     <td>{item.userId}</td>
                     <td>{item.date}</td>
                     <td>{item.time}</td>
@@ -408,7 +473,8 @@ export default function BookingsPage() {
                           className="uf-text-action cancel"
                           onClick={() => openCancelModal(item.id)}
                           disabled={
-                            (item.status !== "PENDING" && item.status !== "APPROVED") ||
+                            (item.status !== "PENDING" &&
+                              item.status !== "APPROVED") ||
                             actionLoading
                           }
                         >
