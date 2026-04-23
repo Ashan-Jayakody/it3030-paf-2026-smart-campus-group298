@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { Check, CircleSlash, Trash2, X } from "lucide-react";
 
 const BOOKINGS_API = "http://localhost:8080/api/bookings";
 const RESOURCES_API = "http://localhost:8080/api/resources";
@@ -107,7 +108,6 @@ function normalizeResource(resource) {
       "Unnamed Resource",
     type: resource.type || "",
     location: resource.location || "",
-    capacity: resource.capacity ?? "",
   };
 }
 
@@ -137,20 +137,14 @@ export default function BookingsPage() {
 
   const fetchResources = async () => {
     const response = await fetch(RESOURCES_API);
-    if (!response.ok) {
-      throw new Error("Failed to load resources");
-    }
-
+    if (!response.ok) throw new Error("Failed to load resources");
     const data = await response.json();
     setResources(Array.isArray(data) ? data.map(normalizeResource) : []);
   };
 
   const fetchBookings = async () => {
     const response = await fetch(BOOKINGS_API);
-    if (!response.ok) {
-      throw new Error("Failed to load bookings");
-    }
-
+    if (!response.ok) throw new Error("Failed to load bookings");
     const data = await response.json();
     setBookings(Array.isArray(data) ? data.map(normalizeBooking) : []);
   };
@@ -176,7 +170,6 @@ export default function BookingsPage() {
   const enhancedBookings = useMemo(() => {
     return bookings.map((booking) => {
       const resource = resourceMap[booking.resourceId];
-
       return {
         ...booking,
         resourceName: resource?.name || booking.resourceId,
@@ -202,7 +195,6 @@ export default function BookingsPage() {
       data = data.filter(
         (item) =>
           item.resourceName.toLowerCase().includes(query) ||
-          item.resourceId.toLowerCase().includes(query) ||
           item.userId.toLowerCase().includes(query) ||
           item.purpose.toLowerCase().includes(query) ||
           item.status.toLowerCase().includes(query) ||
@@ -241,27 +233,15 @@ export default function BookingsPage() {
   };
 
   const openRejectModal = (id) => {
-    setModalState({
-      open: true,
-      type: "reject",
-      bookingId: id,
-    });
+    setModalState({ open: true, type: "reject", bookingId: id });
   };
 
   const openCancelModal = (id) => {
-    setModalState({
-      open: true,
-      type: "cancel",
-      bookingId: id,
-    });
+    setModalState({ open: true, type: "cancel", bookingId: id });
   };
 
   const closeModal = () => {
-    setModalState({
-      open: false,
-      type: "",
-      bookingId: "",
-    });
+    setModalState({ open: false, type: "", bookingId: "" });
   };
 
   const handleModalConfirm = async (reason) => {
@@ -275,9 +255,7 @@ export default function BookingsPage() {
 
       const response = await fetch(endpoint, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ reason }),
       });
 
@@ -321,7 +299,12 @@ export default function BookingsPage() {
         method: "DELETE",
       });
 
-      const data = await response.json();
+      let data = {};
+      try {
+        data = await response.json();
+      } catch {
+        data = {};
+      }
 
       if (!response.ok) {
         throw new Error(data.message || "Failed to delete booking");
@@ -336,11 +319,64 @@ export default function BookingsPage() {
     }
   };
 
+  const renderActions = (item) => {
+    const isPending = item.status === "PENDING";
+    const isApproved = item.status === "APPROVED";
+    const isCancelled = item.status === "CANCELLED";
+    const isRejected = item.status === "REJECTED";
+
+    return (
+      <div className="uf-action-stack">
+        <div className="uf-row-actions-icons">
+          <button
+            className="uf-icon-btn approve"
+            onClick={() => approveBooking(item.id)}
+            disabled={actionLoading || !isPending}
+            title={isPending ? "Approve booking" : "Only pending bookings can be approved"}
+          >
+            <Check size={18} />
+          </button>
+
+          <button
+            className="uf-icon-btn reject"
+            onClick={() => openRejectModal(item.id)}
+            disabled={actionLoading || !isPending}
+            title={isPending ? "Reject booking" : "Only pending bookings can be rejected"}
+          >
+            <X size={18} />
+          </button>
+
+          <button
+            className="uf-icon-btn cancel"
+            onClick={() => openCancelModal(item.id)}
+            disabled={actionLoading || isCancelled || isRejected}
+            title={
+              isCancelled || isRejected
+                ? "Cancelled or rejected bookings cannot be cancelled again"
+                : "Cancel booking"
+            }
+          >
+            <CircleSlash size={18} />
+          </button>
+
+          <button
+            className="uf-icon-btn delete"
+            onClick={() => deleteBooking(item.id)}
+            disabled={actionLoading}
+            title="Delete booking"
+          >
+            <Trash2 size={18} />
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="uf-page-shell">
       <div className="uf-page">
         <div className="uf-page-top">
-          <div>
+          <div className="uf-page-heading">
             <h1 className="uf-page-title">Bookings</h1>
             <p className="uf-page-subtitle">
               View and manage resource bookings with approval, rejection,
@@ -348,10 +384,12 @@ export default function BookingsPage() {
             </p>
           </div>
 
-          <Link to="/bookings/new" className="uf-primary-link-btn">
-            <span className="uf-plus">＋</span>
-            <span>New Booking</span>
-          </Link>
+          <div className="uf-page-top-action">
+            <Link to="/bookings/new" className="uf-primary-link-btn">
+              <span className="uf-plus">＋</span>
+              <span>New Booking</span>
+            </Link>
+          </div>
         </div>
 
         {pageMessage.text ? (
@@ -413,6 +451,7 @@ export default function BookingsPage() {
                 <th className="uf-actions-col">Actions</th>
               </tr>
             </thead>
+
             <tbody>
               {loading ? (
                 <tr>
@@ -432,63 +471,28 @@ export default function BookingsPage() {
                     <td>
                       <div>
                         <strong>{item.resourceName}</strong>
-                        {item.resourceType || item.resourceLocation ? (
-                          <div className="uf-reason" style={{ marginTop: 6 }}>
+                        {(item.resourceType || item.resourceLocation) && (
+                          <div className="uf-resource-meta">
                             {[item.resourceType, item.resourceLocation]
                               .filter(Boolean)
                               .join(" • ")}
                           </div>
-                        ) : null}
+                        )}
                       </div>
                     </td>
+
                     <td>{item.userId}</td>
                     <td>{item.date}</td>
                     <td>{item.time}</td>
                     <td>{item.purpose}</td>
                     <td>{item.expectedAttendees}</td>
+
                     <td>
                       <StatusBadge status={item.status} />
                     </td>
+
                     <td className="uf-actions-col">
-                      <div className="uf-row-actions">
-                        <button
-                          className="uf-icon-action approve"
-                          onClick={() => approveBooking(item.id)}
-                          disabled={item.status !== "PENDING" || actionLoading}
-                          title="Approve"
-                        >
-                          ✓
-                        </button>
-
-                        <button
-                          className="uf-icon-action reject"
-                          onClick={() => openRejectModal(item.id)}
-                          disabled={item.status !== "PENDING" || actionLoading}
-                          title="Reject"
-                        >
-                          ✕
-                        </button>
-
-                        <button
-                          className="uf-text-action cancel"
-                          onClick={() => openCancelModal(item.id)}
-                          disabled={
-                            (item.status !== "PENDING" &&
-                              item.status !== "APPROVED") ||
-                            actionLoading
-                          }
-                        >
-                          Cancel
-                        </button>
-
-                        <button
-                          className="uf-text-action delete"
-                          onClick={() => deleteBooking(item.id)}
-                          disabled={actionLoading}
-                        >
-                          Delete
-                        </button>
-                      </div>
+                      {renderActions(item)}
 
                       {item.rejectionReason ? (
                         <div className="uf-reason rejected">
