@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import TicketCard from '../components/tickets/TicketCard'
 import TicketModal from '../components/tickets/TicketModal'
 import TicketDetails from '../components/tickets/TicketDetails'
-import { getAllTickets, createTicket } from '../api/ticketApi'
+import { getAllTickets, createTicket, updateTicket, deleteTicket } from '../api/ticketApi'
 import { useAuth } from '../auth/useAuth'
 
 export default function TicketsPage() {
@@ -17,6 +17,7 @@ export default function TicketsPage() {
   const [priorityFilter, setPriorityFilter] = useState('ALL')
   
   const [modalOpen, setModalOpen] = useState(false)
+  const [editingTicket, setEditingTicket] = useState(null)
   const [selectedTicket, setSelectedTicket] = useState(null)
 
   const fetchTickets = useCallback(async () => {
@@ -56,20 +57,35 @@ export default function TicketsPage() {
     setFiltered(list)
   }, [tickets, search])
 
-  const handleCreate = async (formData) => {
+  const handleSave = async (formData) => {
     try {
-      await createTicket(formData)
+      if (editingTicket) {
+        await updateTicket(editingTicket.id, formData)
+      } else {
+        await createTicket(formData)
+      }
       setModalOpen(false)
+      setEditingTicket(null)
       fetchTickets()
     } catch {
-      alert('Error creating ticket. Please try again.')
+      alert('Error saving ticket. Please try again.')
     }
   }
 
-  const handleUpdate = () => {
-    fetchTickets()
-    if (selectedTicket) {
-      // Refresh selected ticket data
+  const handleTicketUpdate = async (action) => {
+    if (action === 'EDIT') {
+      setEditingTicket(selectedTicket)
+      setSelectedTicket(null)
+      setModalOpen(true)
+    } else if (action === 'DELETE') {
+      if (window.confirm('Are you sure you want to delete this ticket?')) {
+        await deleteTicket(selectedTicket.id)
+        setSelectedTicket(null)
+        fetchTickets()
+      }
+    } else {
+      // Default refresh
+      fetchTickets()
       getAllTickets().then(res => {
         const updated = res.data.find(t => t.id === selectedTicket.id)
         if (updated) setSelectedTicket(updated)
@@ -155,15 +171,16 @@ export default function TicketsPage() {
 
       <TicketModal 
         isOpen={modalOpen} 
-        onClose={() => setModalOpen(false)} 
-        onSave={handleCreate}
+        onClose={() => { setModalOpen(false); setEditingTicket(null); }} 
+        onSave={handleSave}
+        ticket={editingTicket}
       />
 
       {selectedTicket && (
         <TicketDetails 
           ticket={selectedTicket} 
           onClose={() => setSelectedTicket(null)} 
-          onUpdate={handleUpdate}
+          onUpdate={handleTicketUpdate}
         />
       )}
     </div>
