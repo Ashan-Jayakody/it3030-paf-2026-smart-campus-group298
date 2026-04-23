@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Check, CircleSlash, Trash2, X } from "lucide-react";
+import {
+  Check,
+  CircleAlert,
+  CircleSlash,
+  Trash2,
+  X,
+} from "lucide-react";
 
 const BOOKINGS_API = "http://localhost:8080/api/bookings";
 const RESOURCES_API = "http://localhost:8080/api/resources";
@@ -16,7 +22,67 @@ function StatusBadge({ status }) {
   );
 }
 
-function ReasonModal({
+function Toast({ toast, onClose }) {
+  if (!toast.show) return null;
+
+  return (
+    <div className={`uf-toast ${toast.type}`}>
+      <div className="uf-toast-content">
+        <strong>{toast.type === "success" ? "Success" : "Error"}</strong>
+        <span>{toast.message}</span>
+      </div>
+      <button type="button" className="uf-toast-close" onClick={onClose}>
+        ×
+      </button>
+    </div>
+  );
+}
+
+function ConfirmModal({
+  open,
+  title,
+  message,
+  confirmText,
+  confirmClass,
+  loading,
+  onClose,
+  onConfirm,
+}) {
+  if (!open) return null;
+
+  return (
+    <div className="uf-modal-overlay">
+      <div className="uf-modal-card uf-confirm-modal">
+        <div className="uf-modal-header">
+          <h3>{title}</h3>
+          <button type="button" className="uf-modal-close" onClick={onClose}>
+            ×
+          </button>
+        </div>
+
+        <div className="uf-confirm-content">
+          <p>{message}</p>
+        </div>
+
+        <div className="uf-modal-actions">
+          <button type="button" className="uf-btn-secondary" onClick={onClose}>
+            Close
+          </button>
+          <button
+            type="button"
+            className={`uf-btn-primary ${confirmClass}`}
+            disabled={loading}
+            onClick={onConfirm}
+          >
+            {loading ? "Processing..." : confirmText}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ReasonActionModal({
   open,
   title,
   label,
@@ -77,6 +143,33 @@ function ReasonModal({
   );
 }
 
+function ReasonViewModal({ open, title, reason, onClose }) {
+  if (!open) return null;
+
+  return (
+    <div className="uf-modal-overlay">
+      <div className="uf-modal-card uf-reason-view-modal">
+        <div className="uf-modal-header">
+          <h3>{title}</h3>
+          <button type="button" className="uf-modal-close" onClick={onClose}>
+            ×
+          </button>
+        </div>
+
+        <div className="uf-reason-view-content">
+          <p>{reason || "No reason available."}</p>
+        </div>
+
+        <div className="uf-modal-actions">
+          <button type="button" className="uf-btn-secondary" onClick={onClose}>
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function normalizeBooking(booking) {
   return {
     id: booking.id,
@@ -115,16 +208,37 @@ export default function BookingsPage() {
   const [bookings, setBookings] = useState([]);
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [pageMessage, setPageMessage] = useState({ type: "", text: "" });
   const [activeTab, setActiveTab] = useState("mine");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [actionLoading, setActionLoading] = useState(false);
 
-  const [modalState, setModalState] = useState({
+  const [actionModalState, setActionModalState] = useState({
     open: false,
     type: "",
     bookingId: "",
+  });
+
+  const [viewReasonState, setViewReasonState] = useState({
+    open: false,
+    title: "",
+    reason: "",
+  });
+
+  const [confirmState, setConfirmState] = useState({
+    open: false,
+    type: "",
+    bookingId: "",
+    title: "",
+    message: "",
+    confirmText: "",
+    confirmClass: "",
+  });
+
+  const [toast, setToast] = useState({
+    show: false,
+    type: "success",
+    message: "",
   });
 
   const resourceMap = useMemo(() => {
@@ -134,6 +248,24 @@ export default function BookingsPage() {
     });
     return map;
   }, [resources]);
+
+  useEffect(() => {
+    let timer;
+    if (toast.show) {
+      timer = setTimeout(() => {
+        setToast((prev) => ({ ...prev, show: false }));
+      }, 3000);
+    }
+    return () => clearTimeout(timer);
+  }, [toast.show]);
+
+  const showToast = (type, message) => {
+    setToast({
+      show: true,
+      type,
+      message,
+    });
+  };
 
   const fetchResources = async () => {
     const response = await fetch(RESOURCES_API);
@@ -154,10 +286,7 @@ export default function BookingsPage() {
       setLoading(true);
       await Promise.all([fetchBookings(), fetchResources()]);
     } catch (error) {
-      setPageMessage({
-        type: "error",
-        text: error.message || "Failed to load page data",
-      });
+      showToast("error", error.message || "Failed to load page data");
     } finally {
       setLoading(false);
     }
@@ -205,8 +334,63 @@ export default function BookingsPage() {
     return data;
   }, [enhancedBookings, activeTab, statusFilter, search]);
 
-  const showMessage = (type, text) => {
-    setPageMessage({ type, text });
+  const openRejectModal = (id) => {
+    setActionModalState({ open: true, type: "reject", bookingId: id });
+  };
+
+  const openCancelModal = (id) => {
+    setActionModalState({ open: true, type: "cancel", bookingId: id });
+  };
+
+  const closeActionModal = () => {
+    setActionModalState({ open: false, type: "", bookingId: "" });
+  };
+
+  const openReasonView = (title, reason) => {
+    setViewReasonState({
+      open: true,
+      title,
+      reason,
+    });
+  };
+
+  const closeReasonView = () => {
+    setViewReasonState({
+      open: false,
+      title: "",
+      reason: "",
+    });
+  };
+
+  const openConfirmModal = ({
+    type,
+    bookingId,
+    title,
+    message,
+    confirmText,
+    confirmClass,
+  }) => {
+    setConfirmState({
+      open: true,
+      type,
+      bookingId,
+      title,
+      message,
+      confirmText,
+      confirmClass,
+    });
+  };
+
+  const closeConfirmModal = () => {
+    setConfirmState({
+      open: false,
+      type: "",
+      bookingId: "",
+      title: "",
+      message: "",
+      confirmText: "",
+      confirmClass: "",
+    });
   };
 
   const approveBooking = async (id) => {
@@ -223,35 +407,24 @@ export default function BookingsPage() {
         throw new Error(data.message || "Failed to approve booking");
       }
 
-      showMessage("success", "Booking approved successfully.");
+      showToast("success", "Booking approved successfully.");
       await loadPageData();
     } catch (error) {
-      showMessage("error", error.message || "Failed to approve booking");
+      showToast("error", error.message || "Failed to approve booking");
     } finally {
       setActionLoading(false);
+      closeConfirmModal();
     }
   };
 
-  const openRejectModal = (id) => {
-    setModalState({ open: true, type: "reject", bookingId: id });
-  };
-
-  const openCancelModal = (id) => {
-    setModalState({ open: true, type: "cancel", bookingId: id });
-  };
-
-  const closeModal = () => {
-    setModalState({ open: false, type: "", bookingId: "" });
-  };
-
-  const handleModalConfirm = async (reason) => {
+  const handleActionModalConfirm = async (reason) => {
     try {
       setActionLoading(true);
 
       const endpoint =
-        modalState.type === "reject"
-          ? `${BOOKINGS_API}/${modalState.bookingId}/reject`
-          : `${BOOKINGS_API}/${modalState.bookingId}/cancel`;
+        actionModalState.type === "reject"
+          ? `${BOOKINGS_API}/${actionModalState.bookingId}/reject`
+          : `${BOOKINGS_API}/${actionModalState.bookingId}/cancel`;
 
       const response = await fetch(endpoint, {
         method: "PATCH",
@@ -264,24 +437,28 @@ export default function BookingsPage() {
       if (!response.ok) {
         throw new Error(
           data.message ||
-            `Failed to ${modalState.type === "reject" ? "reject" : "cancel"} booking`
+            `Failed to ${
+              actionModalState.type === "reject" ? "reject" : "cancel"
+            } booking`
         );
       }
 
-      showMessage(
+      showToast(
         "success",
-        modalState.type === "reject"
+        actionModalState.type === "reject"
           ? "Booking rejected successfully."
           : "Booking cancelled successfully."
       );
 
-      closeModal();
+      closeActionModal();
       await loadPageData();
     } catch (error) {
-      showMessage(
+      showToast(
         "error",
         error.message ||
-          `Failed to ${modalState.type === "reject" ? "reject" : "cancel"} booking`
+          `Failed to ${
+            actionModalState.type === "reject" ? "reject" : "cancel"
+          } booking`
       );
     } finally {
       setActionLoading(false);
@@ -289,9 +466,6 @@ export default function BookingsPage() {
   };
 
   const deleteBooking = async (id) => {
-    const confirmed = window.confirm("Are you sure you want to delete this booking?");
-    if (!confirmed) return;
-
     try {
       setActionLoading(true);
 
@@ -310,18 +484,57 @@ export default function BookingsPage() {
         throw new Error(data.message || "Failed to delete booking");
       }
 
-      showMessage("success", "Booking deleted successfully.");
+      showToast("success", "Booking deleted successfully.");
       await loadPageData();
     } catch (error) {
-      showMessage("error", error.message || "Failed to delete booking");
+      showToast("error", error.message || "Failed to delete booking");
     } finally {
       setActionLoading(false);
+      closeConfirmModal();
     }
+  };
+
+  const handleConfirmAction = async () => {
+    if (confirmState.type === "approve") {
+      await approveBooking(confirmState.bookingId);
+      return;
+    }
+
+    if (confirmState.type === "delete") {
+      await deleteBooking(confirmState.bookingId);
+    }
+  };
+
+  const renderStatusCell = (item) => {
+    const reasonText = item.rejectionReason || item.cancelReason || "";
+    const reasonTitle = item.rejectionReason
+      ? "Rejection Reason"
+      : item.cancelReason
+      ? "Cancellation Reason"
+      : "Reason";
+
+    return (
+      <div className="uf-status-inline">
+        <StatusBadge status={item.status} />
+
+        {reasonText ? (
+          <button
+            className="uf-status-info-btn"
+            onClick={() => openReasonView(reasonTitle, reasonText)}
+            title="View reason"
+            disabled={actionLoading}
+          >
+            <CircleAlert size={16} />
+          </button>
+        ) : (
+          <span className="uf-status-info-placeholder" />
+        )}
+      </div>
+    );
   };
 
   const renderActions = (item) => {
     const isPending = item.status === "PENDING";
-    const isApproved = item.status === "APPROVED";
     const isCancelled = item.status === "CANCELLED";
     const isRejected = item.status === "REJECTED";
 
@@ -330,7 +543,16 @@ export default function BookingsPage() {
         <div className="uf-row-actions-icons">
           <button
             className="uf-icon-btn approve"
-            onClick={() => approveBooking(item.id)}
+            onClick={() =>
+              openConfirmModal({
+                type: "approve",
+                bookingId: item.id,
+                title: "Approve Booking",
+                message: "Are you sure you want to approve this booking?",
+                confirmText: "Approve",
+                confirmClass: "",
+              })
+            }
             disabled={actionLoading || !isPending}
             title={isPending ? "Approve booking" : "Only pending bookings can be approved"}
           >
@@ -361,7 +583,16 @@ export default function BookingsPage() {
 
           <button
             className="uf-icon-btn delete"
-            onClick={() => deleteBooking(item.id)}
+            onClick={() =>
+              openConfirmModal({
+                type: "delete",
+                bookingId: item.id,
+                title: "Delete Booking",
+                message: "Are you sure you want to delete this booking record?",
+                confirmText: "Delete",
+                confirmClass: "danger",
+              })
+            }
             disabled={actionLoading}
             title="Delete booking"
           >
@@ -374,6 +605,8 @@ export default function BookingsPage() {
 
   return (
     <div className="uf-page-shell">
+      <Toast toast={toast} onClose={() => setToast((prev) => ({ ...prev, show: false }))} />
+
       <div className="uf-page">
         <div className="uf-page-top">
           <div className="uf-page-heading">
@@ -391,12 +624,6 @@ export default function BookingsPage() {
             </Link>
           </div>
         </div>
-
-        {pageMessage.text ? (
-          <div className={`uf-message-box ${pageMessage.type}`}>
-            {pageMessage.text}
-          </div>
-        ) : null}
 
         <div className="uf-tabs">
           <button
@@ -487,25 +714,9 @@ export default function BookingsPage() {
                     <td>{item.purpose}</td>
                     <td>{item.expectedAttendees}</td>
 
-                    <td>
-                      <StatusBadge status={item.status} />
-                    </td>
+                    <td>{renderStatusCell(item)}</td>
 
-                    <td className="uf-actions-col">
-                      {renderActions(item)}
-
-                      {item.rejectionReason ? (
-                        <div className="uf-reason rejected">
-                          Reject reason: {item.rejectionReason}
-                        </div>
-                      ) : null}
-
-                      {item.cancelReason ? (
-                        <div className="uf-reason cancelled">
-                          Cancel reason: {item.cancelReason}
-                        </div>
-                      ) : null}
-                    </td>
+                    <td className="uf-actions-col">{renderActions(item)}</td>
                   </tr>
                 ))
               )}
@@ -514,19 +725,39 @@ export default function BookingsPage() {
         </div>
       </div>
 
-      <ReasonModal
-        open={modalState.open}
-        title={modalState.type === "reject" ? "Reject Booking" : "Cancel Booking"}
+      <ReasonActionModal
+        open={actionModalState.open}
+        title={actionModalState.type === "reject" ? "Reject Booking" : "Cancel Booking"}
         label={
-          modalState.type === "reject"
+          actionModalState.type === "reject"
             ? "Enter rejection reason"
             : "Enter cancellation reason"
         }
-        confirmText={modalState.type === "reject" ? "Reject Booking" : "Cancel Booking"}
-        confirmClass={modalState.type === "reject" ? "danger" : "warning"}
+        confirmText={
+          actionModalState.type === "reject" ? "Reject Booking" : "Cancel Booking"
+        }
+        confirmClass={actionModalState.type === "reject" ? "danger" : "warning"}
         loading={actionLoading}
-        onClose={closeModal}
-        onConfirm={handleModalConfirm}
+        onClose={closeActionModal}
+        onConfirm={handleActionModalConfirm}
+      />
+
+      <ReasonViewModal
+        open={viewReasonState.open}
+        title={viewReasonState.title}
+        reason={viewReasonState.reason}
+        onClose={closeReasonView}
+      />
+
+      <ConfirmModal
+        open={confirmState.open}
+        title={confirmState.title}
+        message={confirmState.message}
+        confirmText={confirmState.confirmText}
+        confirmClass={confirmState.confirmClass}
+        loading={actionLoading}
+        onClose={closeConfirmModal}
+        onConfirm={handleConfirmAction}
       />
     </div>
   );
