@@ -1,258 +1,295 @@
-import { useEffect, useMemo, useState } from "react";
-import axios from "axios";
-import BookingForm from "../components/BookingForm";
-import BookingStats from "../components/BookingStats";
-import BookingTable from "../components/BookingTable";
-import MyBookings from "../components/MyBookings";
-import ActionModal from "../components/ActionModal";
-import "../styles/booking.css";
+import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 
-const API_BASE = "http://localhost:8080/api/bookings";
-const DEMO_USER_ID = "USER-001";
+const currentUser = {
+  name: "Anbalagan Shajievan",
+  role: "Administrator",
+  initial: "A",
+  notifications: 19,
+};
 
-export default function BookingPage() {
-  const [bookings, setBookings] = useState([]);
-  const [myBookings, setMyBookings] = useState([]);
-  const [formLoading, setFormLoading] = useState(false);
-  const [tableLoading, setTableLoading] = useState(false);
-  const [actionLoading, setActionLoading] = useState(false);
-  const [message, setMessage] = useState({ type: "", text: "" });
-  const [activeFilter, setActiveFilter] = useState("ALL");
+const bookings = [
+  {
+    id: "B001",
+    resource: "Mini Auditorium 01",
+    date: "2026-04-27",
+    time: "09:55 - 17:00",
+    purpose: "study",
+    requestedBy: "Taniya Thilakarathne",
+    status: "REJECTED",
+    mine: false,
+  },
+  {
+    id: "B002",
+    resource: "Lecture room G1105",
+    date: "2026-04-21",
+    time: "01:32 - 14:38",
+    purpose: "jh",
+    requestedBy: "Hirushi Sharanya",
+    status: "PENDING",
+    mine: false,
+  },
+  {
+    id: "B003",
+    resource: "Lecture room G1105",
+    date: "2026-04-28",
+    time: "08:45 - 17:00",
+    purpose: "new",
+    requestedBy: "Hirushi Sharanya",
+    status: "PENDING",
+    mine: false,
+  },
+  {
+    id: "B004",
+    resource: "Lecture room G1105",
+    date: "2026-04-16",
+    time: "09:20 - 16:20",
+    purpose: "jhbi",
+    requestedBy: "Madusha Kavindi",
+    status: "PENDING",
+    mine: false,
+  },
+  {
+    id: "B005",
+    resource: "Lecture room G1105",
+    date: "2026-04-08",
+    time: "08:16 - 12:16",
+    purpose: "jgfukt",
+    requestedBy: "it23550858 JAYAWARDHENA R.M.M.K",
+    status: "PENDING",
+    mine: false,
+  },
+  {
+    id: "B006",
+    resource: "Lecture room G1105",
+    date: "2026-04-27",
+    time: "08:45 - 17:00",
+    purpose: "meeting",
+    requestedBy: "Hirushi Sharanya",
+    status: "PENDING",
+    mine: false,
+  },
+  {
+    id: "B007",
+    resource: "Mini Auditorium 01",
+    date: "2026-04-25",
+    time: "11:45 - 14:45",
+    purpose: "presentation",
+    requestedBy: "Anbalagan Shajievan",
+    status: "CANCELLED",
+    mine: true,
+  },
+];
 
-  const [modalState, setModalState] = useState({
-    open: false,
-    type: "",
-    bookingId: null,
-  });
-
-  const fetchAllBookings = async () => {
-    try {
-      setTableLoading(true);
-      const response = await axios.get(API_BASE);
-      setBookings(response.data || []);
-    } catch (error) {
-      setMessage({
-        type: "error",
-        text: error.response?.data?.message || "Failed to load bookings.",
-      });
-    } finally {
-      setTableLoading(false);
-    }
-  };
-
-  const fetchMyBookings = async () => {
-    try {
-      const response = await axios.get(`${API_BASE}/my`, {
-        params: { userId: DEMO_USER_ID },
-      });
-      setMyBookings(response.data || []);
-    } catch (error) {
-      console.error("Failed to load my bookings", error);
-    }
-  };
-
-  const refreshData = async () => {
-    await Promise.all([fetchAllBookings(), fetchMyBookings()]);
-  };
-
-  useEffect(() => {
-    refreshData();
-  }, []);
-
-  const stats = useMemo(() => {
-    return {
-      total: bookings.length,
-      pending: bookings.filter((b) => b.status === "PENDING").length,
-      approved: bookings.filter((b) => b.status === "APPROVED").length,
-      rejected: bookings.filter((b) => b.status === "REJECTED").length,
-      cancelled: bookings.filter((b) => b.status === "CANCELLED").length,
-    };
-  }, [bookings]);
-
-  const filteredBookings = useMemo(() => {
-    if (activeFilter === "ALL") return bookings;
-    return bookings.filter((booking) => booking.status === activeFilter);
-  }, [bookings, activeFilter]);
-
-  const handleCreateBooking = async (payload) => {
-    try {
-      setFormLoading(true);
-      setMessage({ type: "", text: "" });
-
-      const response = await axios.post(API_BASE, payload);
-
-      setMessage({
-        type: "success",
-        text: `Booking created successfully. Booking ID: ${response.data.id}`,
-      });
-
-      await refreshData();
-    } catch (error) {
-      setMessage({
-        type: "error",
-        text:
-          error.response?.data?.message ||
-          "Failed to create booking. Please check the details.",
-      });
-    } finally {
-      setFormLoading(false);
-    }
-  };
-
-  const handleApprove = async (id) => {
-    try {
-      await axios.patch(`${API_BASE}/${id}/approve`);
-      setMessage({ type: "success", text: "Booking approved successfully." });
-      await refreshData();
-    } catch (error) {
-      setMessage({
-        type: "error",
-        text: error.response?.data?.message || "Failed to approve booking.",
-      });
-    }
-  };
-
-  const openRejectModal = (id) => {
-    setModalState({ open: true, type: "reject", bookingId: id });
-  };
-
-  const openCancelModal = (id) => {
-    setModalState({ open: true, type: "cancel", bookingId: id });
-  };
-
-  const closeModal = () => {
-    setModalState({ open: false, type: "", bookingId: null });
-  };
-
-  const handleModalConfirm = async (reason) => {
-    if (!modalState.bookingId || !modalState.type) return;
-
-    try {
-      setActionLoading(true);
-
-      if (modalState.type === "reject") {
-        await axios.patch(`${API_BASE}/${modalState.bookingId}/reject`, { reason });
-        setMessage({ type: "success", text: "Booking rejected successfully." });
-      }
-
-      if (modalState.type === "cancel") {
-        await axios.patch(`${API_BASE}/${modalState.bookingId}/cancel`, { reason });
-        setMessage({ type: "success", text: "Booking cancelled successfully." });
-      }
-
-      closeModal();
-      await refreshData();
-    } catch (error) {
-      setMessage({
-        type: "error",
-        text:
-          error.response?.data?.message ||
-          `Failed to ${modalState.type} booking.`,
-      });
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handleDelete = async (id) => {
-    const confirmed = window.confirm("Are you sure you want to delete this booking?");
-    if (!confirmed) return;
-
-    try {
-      await axios.delete(`${API_BASE}/${id}`);
-      setMessage({ type: "success", text: "Booking deleted successfully." });
-      await refreshData();
-    } catch (error) {
-      setMessage({
-        type: "error",
-        text: error.response?.data?.message || "Failed to delete booking.",
-      });
-    }
-  };
-
-  const modalTitle =
-    modalState.type === "reject" ? "Reject Booking" : "Cancel Booking";
-
-  const modalLabel =
-    modalState.type === "reject"
-      ? "Enter rejection reason"
-      : "Enter cancellation reason";
-
-  const modalButtonText =
-    modalState.type === "reject" ? "Reject Booking" : "Cancel Booking";
-
-  const modalButtonClass =
-    modalState.type === "reject" ? "danger-btn" : "warning-btn";
-
-  const filterTabs = [
-    { label: "All", value: "ALL" },
-    { label: "Pending", value: "PENDING" },
-    { label: "Approved", value: "APPROVED" },
-    { label: "Rejected", value: "REJECTED" },
-    { label: "Cancelled", value: "CANCELLED" },
+function Sidebar() {
+  const items = [
+    "Dashboard",
+    "Facilities",
+    "Bookings",
+    "Incidents",
+    "Notifications",
+    "User Management",
   ];
 
   return (
-    <div className="booking-page">
-      <div className="booking-shell">
-        <header className="page-header">
-          <p className="page-kicker">Smart Campus · Member 2</p>
-          <h1>Booking Management Dashboard</h1>
-          <p className="page-subtitle">
-            Create bookings, review requests, manage approvals, rejections,
-            cancellations, and monitor booking statuses in one place.
-          </p>
-        </header>
-
-        {message.text && (
-          <div className={`alert-box ${message.type}`}>
-            <span>{message.text}</span>
-          </div>
-        )}
-
-        <BookingStats stats={stats} />
-
-        <div className="top-grid">
-          <BookingForm
-            onSubmit={handleCreateBooking}
-            loading={formLoading}
-            defaultUserId={DEMO_USER_ID}
-          />
-          <MyBookings bookings={myBookings} />
+    <aside className="uf-sidebar">
+      <div className="uf-brand">
+        <div className="uf-brand-icon">U</div>
+        <div>
+          <div className="uf-brand-title">UniFlow</div>
+          <div className="uf-brand-subtitle">SmartCampus</div>
         </div>
-
-        <div className="filter-tabs">
-          {filterTabs.map((tab) => (
-            <button
-              key={tab.value}
-              className={`filter-tab ${activeFilter === tab.value ? "active" : ""}`}
-              onClick={() => setActiveFilter(tab.value)}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        <BookingTable
-          bookings={filteredBookings}
-          loading={tableLoading}
-          onApprove={handleApprove}
-          onReject={openRejectModal}
-          onCancel={openCancelModal}
-          onDelete={handleDelete}
-        />
-
-        <ActionModal
-          open={modalState.open}
-          title={modalTitle}
-          label={modalLabel}
-          confirmText={modalButtonText}
-          confirmClass={modalButtonClass}
-          loading={actionLoading}
-          onClose={closeModal}
-          onConfirm={handleModalConfirm}
-        />
       </div>
+
+      <nav className="uf-nav">
+        {items.map((item) => (
+          <div
+            key={item}
+            className={`uf-nav-item ${item === "Bookings" ? "active" : ""}`}
+          >
+            <span className="uf-nav-dot" />
+            <span>{item}</span>
+          </div>
+        ))}
+      </nav>
+
+      <div className="uf-sidebar-footer">
+        <div className="uf-profile-pill">
+          <div className="uf-profile-dot">N</div>
+          <span>Profile</span>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+function HeaderBar() {
+  return (
+    <div className="uf-header">
+      <div className="uf-header-title">UniFlow</div>
+
+      <div className="uf-header-right">
+        <div className="uf-bell-wrap">
+          <span className="uf-bell">🔔</span>
+          <span className="uf-bell-badge">{currentUser.notifications}</span>
+        </div>
+
+        <div className="uf-user-text">
+          <div className="uf-user-name">{currentUser.name}</div>
+          <div className="uf-user-role">{currentUser.role}</div>
+        </div>
+
+        <div className="uf-user-avatar">{currentUser.initial}</div>
+      </div>
+    </div>
+  );
+}
+
+function StatusBadge({ status }) {
+  return (
+    <span className={`uf-status-badge ${status.toLowerCase()}`}>{status}</span>
+  );
+}
+
+export default function BookingsPage() {
+  const [activeTab, setActiveTab] = useState("all");
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+
+  const filteredRows = useMemo(() => {
+    let data = bookings;
+
+    if (activeTab === "mine") {
+      data = data.filter((item) => item.mine);
+    }
+
+    if (statusFilter !== "ALL") {
+      data = data.filter((item) => item.status === statusFilter);
+    }
+
+    const query = search.trim().toLowerCase();
+    if (query) {
+      data = data.filter(
+        (item) =>
+          item.resource.toLowerCase().includes(query) ||
+          item.purpose.toLowerCase().includes(query) ||
+          item.requestedBy.toLowerCase().includes(query)
+      );
+    }
+
+    return data;
+  }, [activeTab, search, statusFilter]);
+
+  return (
+    <div className="uf-layout">
+      <Sidebar />
+
+      <main className="uf-main">
+        <HeaderBar />
+
+        <div className="uf-page">
+          <div className="uf-page-top">
+            <div>
+              <h1 className="uf-page-title">Bookings</h1>
+              <p className="uf-page-subtitle">View and manage resource bookings</p>
+            </div>
+
+            <Link to="/bookings/new" className="uf-primary-link-btn">
+              <span className="uf-plus">＋</span>
+              <span>New Booking</span>
+            </Link>
+          </div>
+
+          <div className="uf-tabs">
+            <button
+              className={`uf-tab ${activeTab === "mine" ? "active" : ""}`}
+              onClick={() => setActiveTab("mine")}
+            >
+              My Bookings
+            </button>
+            <button
+              className={`uf-tab ${activeTab === "all" ? "active" : ""}`}
+              onClick={() => setActiveTab("all")}
+            >
+              All Bookings
+            </button>
+          </div>
+
+          <div className="uf-toolbar">
+            <div className="uf-search-box">
+              <span className="uf-search-icon">⌕</span>
+              <input
+                type="text"
+                placeholder="Search by resource or purpose..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+
+            <select
+              className="uf-status-select"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="ALL">All Statuses</option>
+              <option value="PENDING">Pending</option>
+              <option value="APPROVED">Approved</option>
+              <option value="REJECTED">Rejected</option>
+              <option value="CANCELLED">Cancelled</option>
+            </select>
+          </div>
+
+          <div className="uf-table-shell">
+            <table className="uf-table">
+              <thead>
+                <tr>
+                  <th>Resource</th>
+                  <th>Date</th>
+                  <th>Time</th>
+                  <th>Purpose</th>
+                  <th>Requested By</th>
+                  <th>Status</th>
+                  <th className="uf-actions-col">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredRows.length === 0 ? (
+                  <tr>
+                    <td colSpan="7" className="uf-empty-cell">
+                      No bookings found.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredRows.map((item) => (
+                    <tr key={item.id}>
+                      <td>{item.resource}</td>
+                      <td>{item.date}</td>
+                      <td>{item.time}</td>
+                      <td>{item.purpose}</td>
+                      <td>{item.requestedBy}</td>
+                      <td>
+                        <StatusBadge status={item.status} />
+                      </td>
+                      <td className="uf-actions-col">
+                        {item.status === "PENDING" ? (
+                          <div className="uf-row-actions">
+                            <button className="uf-icon-action approve">✓</button>
+                            <button className="uf-icon-action reject">✕</button>
+                          </div>
+                        ) : null}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <footer className="uf-footer">
+          © 2026 UniFlow · Privacy Policy · Campus Map
+        </footer>
+      </main>
     </div>
   );
 }
