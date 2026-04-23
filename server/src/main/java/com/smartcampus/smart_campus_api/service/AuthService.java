@@ -1,18 +1,20 @@
 package com.smartcampus.smart_campus_api.service;
 
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Service;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.client.RestTemplate;
-import org.springframework.web.util.UriUtils;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2Error;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtException;
+import org.springframework.security.oauth2.jwt.JwtValidators;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.stereotype.Service;
 
 import com.smartcampus.smart_campus_api.dto.AuthResponse;
 import com.smartcampus.smart_campus_api.model.AppRole;
@@ -28,13 +30,11 @@ public class AuthService {
     private final AppUserRepository appUserRepository;
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
-    private final RestTemplate restTemplate = new RestTemplate();
 
-    @Value("${app.google.client-id}")
-    private String googleClientId;
+    @Value("${app.firebase.project-id}")
+    private String firebaseProjectId;
 
-    @Value("${app.admin-emails:}")
-    private String adminEmailsRaw;
+    private volatile JwtDecoder firebaseJwtDecoder;
 
     public AuthResponse signupWithEmail(String name, String email, String password, String role) {
         String normalizedEmail = normalizeEmail(email);
@@ -74,13 +74,30 @@ public class AuthService {
         return AuthResponse.of(jwtService.generateToken(user), user);
     }
 
-    public AuthResponse loginWithGoogle(String credential) {
-        Map<String, Object> tokenInfo = verifyGoogleToken(credential);
+    public AuthResponse loginWithFirebase(String idToken) {
+        Jwt token = verifyFirebaseToken(idToken);
 
-        String email = normalizeEmail(String.valueOf(tokenInfo.get("email")));
-        String name = String.valueOf(tokenInfo.getOrDefault("name", email));
-        String picture = String.valueOf(tokenInfo.getOrDefault("picture", ""));
-        String sub = String.valueOf(tokenInfo.get("sub"));
+        String email = normalizeEmail(token.getClaimAsString("email"));
+        if (email == null || email.isBlank()) {
+            throw new IllegalArgumentException("Firebase token does not contain a valid email.");
+        }
+
+        Object emailVerified = token.getClaims().get("email_verified");
+        if (emailVerified instanceof Boolean verified && !verified) {
+            throw new IllegalArgumentException("Google email is not verified.");
+        }
+
+        String name = token.getClaimAsString("name");
+        if (name == null || name.isBlank()) {
+            name = email;
+        }
+
+        String picture = token.getClaimAsString("picture");
+        if (picture == null) {
+            picture = "";
+        }
+
+        String sub = token.getSubject();
 
         AppUser user = appUserRepository.findByEmail(email).orElseGet(AppUser::new);
         user.setGoogleId(sub);
@@ -93,6 +110,46 @@ public class AuthService {
 
         String jwt = jwtService.generateToken(user);
         return AuthResponse.of(jwt, user);
+    }
+
+    private Jwt verifyFirebaseToken(String idToken) {
+        try {
+            return getFirebaseJwtDecoder().decode(idToken);
+        } catch (JwtException ex) {
+            throw new IllegalArgumentException("Invalid Firebase ID token.");
+        }
+    }
+
+    private JwtDecoder getFirebaseJwtDecoder() {
+        if (firebaseJwtDecoder != null) {
+            return firebaseJwtDecoder;
+        }
+
+        synchronized (this) {
+            if (firebaseJwtDecoder != null) {
+                return firebaseJwtDecoder;
+            }
+
+            String issuer = "https://securetoken.google.com/" + firebaseProjectId;
+            NimbusJwtDecoder decoder = NimbusJwtDecoder
+                    .withJwkSetUri("https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com")
+                    .build();
+
+            OAuth2TokenValidator<Jwt> withIssuer = JwtValidators.createDefaultWithIssuer(issuer);
+            OAuth2TokenValidator<Jwt> withAudience = token -> {
+                if (token.getAudience().contains(firebaseProjectId)) {
+                    return OAuth2TokenValidatorResult.success();
+                }
+
+                return OAuth2TokenValidatorResult.failure(
+                        new OAuth2Error("invalid_token", "Invalid Firebase audience.", null)
+                );
+            };
+
+            decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(withIssuer, withAudience));
+            firebaseJwtDecoder = decoder;
+            return firebaseJwtDecoder;
+        }
     }
 
     private Set<AppRole> initialRolesForSignup(AppRole requestedRole) {
@@ -130,40 +187,4 @@ public class AuthService {
         return email == null ? null : email.trim().toLowerCase();
     }
 
-    private Map<String, Object> verifyGoogleToken(String credential) {
-        String url = "https://oauth2.googleapis.com/tokeninfo?id_token="
-                + UriUtils.encodeQueryParam(credential, StandardCharsets.UTF_8);
-
-        ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
-        Map<String, Object> body = response.getBody();
-
-        if (body == null) {
-            throw new IllegalArgumentException("Invalid Google token.");
-        }
-
-        String audience = String.valueOf(body.get("aud"));
-        if (!googleClientId.equals(audience)) {
-            throw new IllegalArgumentException("Google token audience does not match your client id.");
-        }
-
-        String emailVerified = String.valueOf(body.get("email_verified"));
-        if (!"true".equalsIgnoreCase(emailVerified)) {
-            throw new IllegalArgumentException("Google email is not verified.");
-        }
-
-        return body;
-    }
-
-    private boolean isAdminEmail(String email) {
-        if (adminEmailsRaw == null || adminEmailsRaw.isBlank()) {
-            return false;
-        }
-
-        Set<String> adminEmails = Arrays.stream(adminEmailsRaw.split(","))
-                .map(String::trim)
-                .filter(value -> !value.isBlank())
-                .collect(Collectors.toSet());
-
-        return adminEmails.contains(email);
-    }
 }

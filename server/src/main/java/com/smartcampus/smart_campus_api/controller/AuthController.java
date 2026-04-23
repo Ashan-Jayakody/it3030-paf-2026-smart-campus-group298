@@ -32,7 +32,7 @@ public class AuthController {
 
     private final AuthService authService;
 
-    public record GoogleLoginRequest(@NotBlank String credential) {
+    public record GoogleLoginRequest(@NotBlank String idToken) {
     }
 
     public record EmailSignupRequest(
@@ -49,7 +49,7 @@ public class AuthController {
 
     @PostMapping("/google")
     public ResponseEntity<AuthResponse> google(@Valid @RequestBody GoogleLoginRequest request) {
-        return ResponseEntity.ok(authService.loginWithGoogle(request.credential()));
+        return ResponseEntity.ok(authService.loginWithFirebase(request.idToken()));
     }
 
     @PostMapping("/local/signup")

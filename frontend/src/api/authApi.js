@@ -1,7 +1,7 @@
 import httpClient from './httpClient'
 
-export const loginWithGoogle = (credential) => {
-  return httpClient.post('/auth/google', { credential })
+export const loginWithFirebase = (credential) => {
+  return httpClient.post('/auth/google', { idToken: credential })
 }
 
 export const loginWithEmail = ({ email, password }) => {
