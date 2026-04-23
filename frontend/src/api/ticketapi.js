@@ -9,6 +9,8 @@ export const updateTicketStatus = (id, status, reason) =>
     httpClient.put(`${BASE}/${id}/status`, null, { params: { status, reason } })
 export const assignTechnician = (id, technicianId) => 
     httpClient.put(`${BASE}/${id}/assign`, null, { params: { technicianId } })
+export const updateTicket = (id, data) => httpClient.put(`${BASE}/${id}`, data)
+export const deleteTicket = (id) => httpClient.delete(`${BASE}/${id}`)
 
 // Comment APIs
 export const getCommentsByTicket = (ticketId) => httpClient.get(`${BASE}/${ticketId}/comments`)
