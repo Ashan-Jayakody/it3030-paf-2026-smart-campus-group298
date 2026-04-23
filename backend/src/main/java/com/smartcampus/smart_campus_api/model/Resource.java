@@ -19,17 +19,6 @@ public class Resource {
     public Resource() {
     }
 
-    public Resource(String id, String name, String type, Integer capacity, String location,
-                    String availabilityWindows, ResourceStatus status) {
-        this.id = id;
-        this.name = name;
-        this.type = type;
-        this.capacity = capacity;
-        this.location = location;
-        this.availabilityWindows = availabilityWindows;
-        this.status = status;
-    }
-
     public String getId() {
         return id;
     }
