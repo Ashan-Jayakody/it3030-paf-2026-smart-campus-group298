@@ -3,8 +3,6 @@ package com.smartcampus.smart_campus_api.model;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.util.List;
-
 @Document(collection = "resources")
 public class Resource {
 
@@ -15,14 +13,29 @@ public class Resource {
     private String type;
     private Integer capacity;
     private String location;
-    private List<String> availabilityWindows;
+    private String availabilityWindows;
     private ResourceStatus status;
 
     public Resource() {
     }
 
+    public Resource(String id, String name, String type, Integer capacity, String location,
+                    String availabilityWindows, ResourceStatus status) {
+        this.id = id;
+        this.name = name;
+        this.type = type;
+        this.capacity = capacity;
+        this.location = location;
+        this.availabilityWindows = availabilityWindows;
+        this.status = status;
+    }
+
     public String getId() {
         return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
     }
 
     public String getName() {
@@ -57,11 +70,11 @@ public class Resource {
         this.location = location;
     }
 
-    public List<String> getAvailabilityWindows() {
+    public String getAvailabilityWindows() {
         return availabilityWindows;
     }
 
-    public void setAvailabilityWindows(List<String> availabilityWindows) {
+    public void setAvailabilityWindows(String availabilityWindows) {
         this.availabilityWindows = availabilityWindows;
     }
 

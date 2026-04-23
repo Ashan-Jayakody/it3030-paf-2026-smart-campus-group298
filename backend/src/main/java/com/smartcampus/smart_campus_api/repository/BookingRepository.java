@@ -1,7 +1,7 @@
 package com.smartcampus.smart_campus_api.repository;
 
-import com.smartcampus.smart_campus_api.enums.BookingStatus;
 import com.smartcampus.smart_campus_api.model.Booking;
+import com.smartcampus.smart_campus_api.model.BookingStatus;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
@@ -11,7 +11,11 @@ import java.util.List;
 @Repository
 public interface BookingRepository extends MongoRepository<Booking, String> {
 
-    List<Booking> findByUserIdOrderByDateDescStartTimeDesc(String userId);
+    List<Booking> findByUserId(String userId);
+
+    List<Booking> findByStatus(BookingStatus status);
+
+    List<Booking> findByResourceIdAndDate(String resourceId, LocalDate date);
 
     List<Booking> findByResourceIdAndDateAndStatus(String resourceId, LocalDate date, BookingStatus status);
 }
