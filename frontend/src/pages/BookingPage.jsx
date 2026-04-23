@@ -1,5 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+
+const BOOKINGS_API = "http://localhost:8080/api/bookings";
 
 const currentUser = {
   name: "Anbalagan Shajievan",
@@ -7,79 +9,6 @@ const currentUser = {
   initial: "A",
   notifications: 19,
 };
-
-const bookings = [
-  {
-    id: "B001",
-    resource: "Mini Auditorium 01",
-    date: "2026-04-27",
-    time: "09:55 - 17:00",
-    purpose: "study",
-    requestedBy: "Taniya Thilakarathne",
-    status: "REJECTED",
-    mine: false,
-  },
-  {
-    id: "B002",
-    resource: "Lecture room G1105",
-    date: "2026-04-21",
-    time: "01:32 - 14:38",
-    purpose: "jh",
-    requestedBy: "Hirushi Sharanya",
-    status: "PENDING",
-    mine: false,
-  },
-  {
-    id: "B003",
-    resource: "Lecture room G1105",
-    date: "2026-04-28",
-    time: "08:45 - 17:00",
-    purpose: "new",
-    requestedBy: "Hirushi Sharanya",
-    status: "PENDING",
-    mine: false,
-  },
-  {
-    id: "B004",
-    resource: "Lecture room G1105",
-    date: "2026-04-16",
-    time: "09:20 - 16:20",
-    purpose: "jhbi",
-    requestedBy: "Madusha Kavindi",
-    status: "PENDING",
-    mine: false,
-  },
-  {
-    id: "B005",
-    resource: "Lecture room G1105",
-    date: "2026-04-08",
-    time: "08:16 - 12:16",
-    purpose: "jgfukt",
-    requestedBy: "it23550858 JAYAWARDHENA R.M.M.K",
-    status: "PENDING",
-    mine: false,
-  },
-  {
-    id: "B006",
-    resource: "Lecture room G1105",
-    date: "2026-04-27",
-    time: "08:45 - 17:00",
-    purpose: "meeting",
-    requestedBy: "Hirushi Sharanya",
-    status: "PENDING",
-    mine: false,
-  },
-  {
-    id: "B007",
-    resource: "Mini Auditorium 01",
-    date: "2026-04-25",
-    time: "11:45 - 14:45",
-    purpose: "presentation",
-    requestedBy: "Anbalagan Shajievan",
-    status: "CANCELLED",
-    mine: true,
-  },
-];
 
 function Sidebar() {
   const items = [
@@ -146,21 +75,68 @@ function HeaderBar() {
 }
 
 function StatusBadge({ status }) {
+  const safeStatus = (status || "PENDING").toLowerCase();
+
   return (
-    <span className={`uf-status-badge ${status.toLowerCase()}`}>{status}</span>
+    <span className={`uf-status-badge ${safeStatus}`}>
+      {status || "PENDING"}
+    </span>
   );
 }
 
+function normalizeBooking(booking) {
+  return {
+    id: booking.id,
+    resource: booking.resourceId || "-",
+    date: booking.date || "-",
+    time:
+      booking.startTime && booking.endTime
+        ? `${booking.startTime.slice(0, 5)} - ${booking.endTime.slice(0, 5)}`
+        : "-",
+    purpose: booking.purpose || "-",
+    requestedBy: booking.userId || "-",
+    status: booking.status || "PENDING",
+  };
+}
+
 export default function BookingsPage() {
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("all");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [error, setError] = useState("");
+
+  const fetchBookings = async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const response = await fetch(BOOKINGS_API);
+      if (!response.ok) {
+        throw new Error("Failed to fetch bookings");
+      }
+
+      const data = await response.json();
+      setBookings(Array.isArray(data) ? data.map(normalizeBooking) : []);
+    } catch (err) {
+      setError(err.message || "Something went wrong while loading bookings.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBookings();
+  }, []);
 
   const filteredRows = useMemo(() => {
     let data = bookings;
 
     if (activeTab === "mine") {
-      data = data.filter((item) => item.mine);
+      data = data.filter((item) =>
+        item.requestedBy.toLowerCase().includes("user-001")
+      );
     }
 
     if (statusFilter !== "ALL") {
@@ -178,7 +154,7 @@ export default function BookingsPage() {
     }
 
     return data;
-  }, [activeTab, search, statusFilter]);
+  }, [bookings, activeTab, search, statusFilter]);
 
   return (
     <div className="uf-layout">
@@ -239,6 +215,8 @@ export default function BookingsPage() {
             </select>
           </div>
 
+          {error ? <div className="uf-error-box">{error}</div> : null}
+
           <div className="uf-table-shell">
             <table className="uf-table">
               <thead>
@@ -253,7 +231,13 @@ export default function BookingsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredRows.length === 0 ? (
+                {loading ? (
+                  <tr>
+                    <td colSpan="7" className="uf-empty-cell">
+                      Loading bookings...
+                    </td>
+                  </tr>
+                ) : filteredRows.length === 0 ? (
                   <tr>
                     <td colSpan="7" className="uf-empty-cell">
                       No bookings found.

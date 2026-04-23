@@ -1,5 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+
+const BOOKINGS_API = "http://localhost:8080/api/bookings";
+const RESOURCES_API = "http://localhost:8080/api/resources";
 
 const currentUser = {
   name: "Anbalagan Shajievan",
@@ -7,13 +10,6 @@ const currentUser = {
   initial: "A",
   notifications: 19,
 };
-
-const resources = [
-  "Mini Auditorium 01",
-  "Lecture room G1105",
-  "Computer Lab CL201",
-  "Board Room BR102",
-];
 
 function Sidebar() {
   const items = [
@@ -79,16 +75,33 @@ function HeaderBar() {
   );
 }
 
+function normalizeResource(resource) {
+  return {
+    id: resource.id,
+    label:
+      resource.name ||
+      resource.resourceId ||
+      resource.code ||
+      resource.id ||
+      "Unnamed Resource",
+  };
+}
+
 export default function NewBookingPage() {
   const navigate = useNavigate();
 
+  const [resources, setResources] = useState([]);
+  const [loadingResources, setLoadingResources] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [serverError, setServerError] = useState("");
+
   const [form, setForm] = useState({
-    resource: "",
+    resourceId: "",
     date: "",
     startTime: "",
     endTime: "",
     purpose: "",
-    attendees: "",
+    expectedAttendees: "",
   });
 
   const [errors, setErrors] = useState({});
@@ -98,42 +111,98 @@ export default function NewBookingPage() {
     return now.toISOString().split("T")[0];
   }, []);
 
+  useEffect(() => {
+    const fetchResources = async () => {
+      try {
+        setLoadingResources(true);
+        const response = await fetch(RESOURCES_API);
+        if (!response.ok) {
+          throw new Error("Failed to fetch resources");
+        }
+        const data = await response.json();
+        setResources(Array.isArray(data) ? data.map(normalizeResource) : []);
+      } catch (err) {
+        setServerError(err.message || "Failed to load resources.");
+      } finally {
+        setLoadingResources(false);
+      }
+    };
+
+    fetchResources();
+  }, []);
+
   const updateField = (name, value) => {
     setForm((prev) => ({ ...prev, [name]: value }));
     setErrors((prev) => ({ ...prev, [name]: "" }));
+    setServerError("");
   };
 
   const validate = () => {
     const next = {};
 
-    if (!form.resource) next.resource = "Resource is required";
+    if (!form.resourceId) next.resourceId = "Resource is required";
     if (!form.date) next.date = "Date is required";
     if (!form.startTime) next.startTime = "Start time is required";
     if (!form.endTime) next.endTime = "End time is required";
     if (!form.purpose.trim()) next.purpose = "Purpose is required";
 
-    if (
-      form.startTime &&
-      form.endTime &&
-      form.startTime >= form.endTime
-    ) {
+    if (form.startTime && form.endTime && form.startTime >= form.endTime) {
       next.endTime = "End time must be later than start time";
     }
 
-    if (form.attendees && Number(form.attendees) < 1) {
-      next.attendees = "Expected attendees must be at least 1";
+    if (form.expectedAttendees && Number(form.expectedAttendees) < 1) {
+      next.expectedAttendees = "Expected attendees must be at least 1";
     }
 
     setErrors(next);
     return Object.keys(next).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
 
-    alert("Booking request submitted");
-    navigate("/bookings");
+    try {
+      setSubmitting(true);
+      setServerError("");
+
+      const payload = {
+        resourceId: form.resourceId,
+        userId: "USER-001",
+        date: form.date,
+        startTime: `${form.startTime}:00`,
+        endTime: `${form.endTime}:00`,
+        purpose: form.purpose,
+        expectedAttendees: form.expectedAttendees
+          ? Number(form.expectedAttendees)
+          : 0,
+      };
+
+      const response = await fetch(BOOKINGS_API, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        let message = "Failed to create booking.";
+        try {
+          const errorData = await response.json();
+          message = errorData.message || message;
+        } catch {
+          // ignore json parse failure
+        }
+        throw new Error(message);
+      }
+
+      navigate("/bookings");
+    } catch (err) {
+      setServerError(err.message || "Failed to create booking.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -146,20 +215,25 @@ export default function NewBookingPage() {
         <div className="uf-page">
           <div className="uf-form-wrap">
             <form className="uf-booking-form-card" onSubmit={handleSubmit}>
+              {serverError ? <div className="uf-error-box">{serverError}</div> : null}
+
               <div className="uf-form-group">
                 <label>Resource *</label>
                 <select
-                  value={form.resource}
-                  onChange={(e) => updateField("resource", e.target.value)}
+                  value={form.resourceId}
+                  onChange={(e) => updateField("resourceId", e.target.value)}
+                  disabled={loadingResources}
                 >
-                  <option value="">Select a resource...</option>
+                  <option value="">
+                    {loadingResources ? "Loading resources..." : "Select a resource..."}
+                  </option>
                   {resources.map((item) => (
-                    <option key={item} value={item}>
-                      {item}
+                    <option key={item.id} value={item.id}>
+                      {item.label}
                     </option>
                   ))}
                 </select>
-                {errors.resource ? <small>{errors.resource}</small> : null}
+                {errors.resourceId ? <small>{errors.resourceId}</small> : null}
               </div>
 
               <div className="uf-form-group">
@@ -211,18 +285,20 @@ export default function NewBookingPage() {
                 <input
                   type="number"
                   placeholder="Number of attendees"
-                  value={form.attendees}
-                  onChange={(e) => updateField("attendees", e.target.value)}
+                  value={form.expectedAttendees}
+                  onChange={(e) => updateField("expectedAttendees", e.target.value)}
                 />
-                {errors.attendees ? <small>{errors.attendees}</small> : null}
+                {errors.expectedAttendees ? (
+                  <small>{errors.expectedAttendees}</small>
+                ) : null}
               </div>
 
               <div className="uf-form-actions">
                 <Link to="/bookings" className="uf-cancel-btn">
                   Cancel
                 </Link>
-                <button type="submit" className="uf-submit-btn">
-                  Submit Request
+                <button type="submit" className="uf-submit-btn" disabled={submitting}>
+                  {submitting ? "Submitting..." : "Submit Request"}
                 </button>
               </div>
             </form>

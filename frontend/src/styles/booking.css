@@ -548,6 +548,22 @@ textarea {
   cursor: pointer;
 }
 
+.uf-submit-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.uf-error-box {
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  font-size: 14px;
+  font-weight: 600;
+}
+
 @media (max-width: 1100px) {
   .uf-sidebar {
     width: 92px;
