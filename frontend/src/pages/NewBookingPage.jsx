@@ -15,6 +15,9 @@ function normalizeResource(resource) {
       resource.id ||
       "Unnamed Resource",
     status: resource.status || "ACTIVE",
+    capacity: resource.capacity ?? "",
+    type: resource.type || "",
+    location: resource.location || "",
   };
 }
 
@@ -50,14 +53,14 @@ export default function NewBookingPage() {
 
         const response = await fetch(RESOURCES_API);
         if (!response.ok) {
-          throw new Error("Failed to fetch resources");
+          throw new Error("Failed to load resources");
         }
 
         const data = await response.json();
         const normalized = Array.isArray(data) ? data.map(normalizeResource) : [];
         setResources(normalized.filter((item) => item.status === "ACTIVE"));
-      } catch (err) {
-        setServerError(err.message || "Failed to load resources.");
+      } catch (error) {
+        setServerError(error.message || "Failed to load resources.");
       } finally {
         setLoadingResources(false);
       }
@@ -65,6 +68,8 @@ export default function NewBookingPage() {
 
     fetchResources();
   }, []);
+
+  const selectedResource = resources.find((item) => item.id === form.resourceId);
 
   const updateField = (name, value) => {
     setForm((prev) => ({ ...prev, [name]: value }));
@@ -74,24 +79,24 @@ export default function NewBookingPage() {
   };
 
   const validate = () => {
-    const next = {};
+    const nextErrors = {};
 
-    if (!form.resourceId) next.resourceId = "Resource is required";
-    if (!form.date) next.date = "Date is required";
-    if (!form.startTime) next.startTime = "Start time is required";
-    if (!form.endTime) next.endTime = "End time is required";
-    if (!form.purpose.trim()) next.purpose = "Purpose is required";
+    if (!form.resourceId) nextErrors.resourceId = "Resource is required";
+    if (!form.date) nextErrors.date = "Date is required";
+    if (!form.startTime) nextErrors.startTime = "Start time is required";
+    if (!form.endTime) nextErrors.endTime = "End time is required";
+    if (!form.purpose.trim()) nextErrors.purpose = "Purpose is required";
 
     if (form.startTime && form.endTime && form.startTime >= form.endTime) {
-      next.endTime = "End time must be later than start time";
+      nextErrors.endTime = "End time must be later than start time";
     }
 
     if (form.expectedAttendees && Number(form.expectedAttendees) < 1) {
-      next.expectedAttendees = "Expected attendees must be at least 1";
+      nextErrors.expectedAttendees = "Expected attendees must be at least 1";
     }
 
-    setErrors(next);
-    return Object.keys(next).length === 0;
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
@@ -112,7 +117,7 @@ export default function NewBookingPage() {
         purpose: form.purpose,
         expectedAttendees: form.expectedAttendees
           ? Number(form.expectedAttendees)
-          : 0,
+          : 1,
       };
 
       const response = await fetch(BOOKINGS_API, {
@@ -123,24 +128,19 @@ export default function NewBookingPage() {
         body: JSON.stringify(payload),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        let message = "Failed to create booking.";
-        try {
-          const errorData = await response.json();
-          message = errorData.message || message;
-        } catch {
-          // ignore
-        }
-        throw new Error(message);
+        throw new Error(data.message || "Failed to create booking");
       }
 
-      setSuccessMessage("Booking request submitted successfully.");
+      setSuccessMessage("Booking created successfully.");
 
       setTimeout(() => {
         navigate("/bookings");
       }, 700);
-    } catch (err) {
-      setServerError(err.message || "Failed to create booking.");
+    } catch (error) {
+      setServerError(error.message || "Failed to create booking");
     } finally {
       setSubmitting(false);
     }
@@ -179,6 +179,23 @@ export default function NewBookingPage() {
               </select>
               {errors.resourceId ? <small>{errors.resourceId}</small> : null}
             </div>
+
+            {selectedResource ? (
+              <div className="uf-resource-info">
+                <div>
+                  <span>Type</span>
+                  <strong>{selectedResource.type || "-"}</strong>
+                </div>
+                <div>
+                  <span>Capacity</span>
+                  <strong>{selectedResource.capacity || "-"}</strong>
+                </div>
+                <div>
+                  <span>Location</span>
+                  <strong>{selectedResource.location || "-"}</strong>
+                </div>
+              </div>
+            ) : null}
 
             <div className="uf-form-group">
               <label>Date *</label>

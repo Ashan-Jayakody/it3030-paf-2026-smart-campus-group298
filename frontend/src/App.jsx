@@ -3,7 +3,7 @@ import BookingsPage from "./pages/BookingsPage";
 import NewBookingPage from "./pages/NewBookingPage";
 import "./styles/bookings.css";
 
-function App() {
+export default function App() {
   return (
     <BrowserRouter>
       <Routes>
@@ -14,5 +14,3 @@ function App() {
     </BrowserRouter>
   );
 }
-
-export default App;

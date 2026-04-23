@@ -14,7 +14,7 @@ function StatusBadge({ status }) {
   );
 }
 
-function ActionModal({
+function ReasonModal({
   open,
   title,
   label,
@@ -27,7 +27,9 @@ function ActionModal({
   const [reason, setReason] = useState("");
 
   useEffect(() => {
-    if (open) setReason("");
+    if (open) {
+      setReason("");
+    }
   }, [open]);
 
   if (!open) return null;
@@ -52,14 +54,14 @@ function ActionModal({
           <label>{label}</label>
           <textarea
             rows="4"
-            placeholder="Enter reason here..."
             value={reason}
             onChange={(e) => setReason(e.target.value)}
+            placeholder="Enter reason here..."
           />
 
           <div className="uf-modal-actions">
             <button type="button" className="uf-btn-secondary" onClick={onClose}>
-              Cancel
+              Close
             </button>
             <button
               type="submit"
@@ -78,17 +80,20 @@ function ActionModal({
 function normalizeBooking(booking) {
   return {
     id: booking.id,
-    resource: booking.resourceId || "-",
+    resourceId: booking.resourceId || "-",
+    userId: booking.userId || "-",
     date: booking.date || "-",
+    startTime: booking.startTime || "",
+    endTime: booking.endTime || "",
     time:
       booking.startTime && booking.endTime
         ? `${booking.startTime.slice(0, 5)} - ${booking.endTime.slice(0, 5)}`
         : "-",
     purpose: booking.purpose || "-",
-    requestedBy: booking.userId || "-",
     status: booking.status || "PENDING",
     rejectionReason: booking.rejectionReason || "",
     cancelReason: booking.cancelReason || "",
+    expectedAttendees: booking.expectedAttendees ?? 0,
   };
 }
 
@@ -96,17 +101,16 @@ export default function BookingsPage() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pageMessage, setPageMessage] = useState({ type: "", text: "" });
-
-  const [activeTab, setActiveTab] = useState("all");
+  const [activeTab, setActiveTab] = useState("mine");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [actionLoading, setActionLoading] = useState(false);
 
   const [modalState, setModalState] = useState({
     open: false,
     type: "",
     bookingId: "",
   });
-  const [actionLoading, setActionLoading] = useState(false);
 
   const fetchBookings = async () => {
     try {
@@ -114,16 +118,15 @@ export default function BookingsPage() {
       const response = await fetch(BOOKINGS_API);
 
       if (!response.ok) {
-        throw new Error("Failed to fetch bookings");
+        throw new Error("Failed to load bookings");
       }
 
       const data = await response.json();
       setBookings(Array.isArray(data) ? data.map(normalizeBooking) : []);
-      setPageMessage({ type: "", text: "" });
-    } catch (err) {
+    } catch (error) {
       setPageMessage({
         type: "error",
-        text: err.message || "Something went wrong while loading bookings.",
+        text: error.message || "Failed to load bookings",
       });
     } finally {
       setLoading(false);
@@ -134,11 +137,11 @@ export default function BookingsPage() {
     fetchBookings();
   }, []);
 
-  const filteredRows = useMemo(() => {
+  const filteredBookings = useMemo(() => {
     let data = bookings;
 
     if (activeTab === "mine") {
-      data = data.filter((item) => item.requestedBy === CURRENT_USER_ID);
+      data = data.filter((item) => item.userId === CURRENT_USER_ID);
     }
 
     if (statusFilter !== "ALL") {
@@ -149,56 +152,65 @@ export default function BookingsPage() {
     if (query) {
       data = data.filter(
         (item) =>
-          item.resource.toLowerCase().includes(query) ||
+          item.resourceId.toLowerCase().includes(query) ||
+          item.userId.toLowerCase().includes(query) ||
           item.purpose.toLowerCase().includes(query) ||
-          item.requestedBy.toLowerCase().includes(query) ||
           item.status.toLowerCase().includes(query)
       );
     }
 
     return data;
-  }, [bookings, activeTab, search, statusFilter]);
+  }, [bookings, activeTab, statusFilter, search]);
+
+  const showMessage = (type, text) => {
+    setPageMessage({ type, text });
+  };
 
   const approveBooking = async (id) => {
     try {
       setActionLoading(true);
+
       const response = await fetch(`${BOOKINGS_API}/${id}/approve`, {
         method: "PATCH",
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        let message = "Failed to approve booking.";
-        try {
-          const data = await response.json();
-          message = data.message || message;
-        } catch {
-          // ignore
-        }
-        throw new Error(message);
+        throw new Error(data.message || "Failed to approve booking");
       }
 
-      setPageMessage({ type: "success", text: "Booking approved successfully." });
+      showMessage("success", "Booking approved successfully.");
       await fetchBookings();
-    } catch (err) {
-      setPageMessage({
-        type: "error",
-        text: err.message || "Failed to approve booking.",
-      });
+    } catch (error) {
+      showMessage("error", error.message || "Failed to approve booking");
     } finally {
       setActionLoading(false);
     }
   };
 
   const openRejectModal = (id) => {
-    setModalState({ open: true, type: "reject", bookingId: id });
+    setModalState({
+      open: true,
+      type: "reject",
+      bookingId: id,
+    });
   };
 
   const openCancelModal = (id) => {
-    setModalState({ open: true, type: "cancel", bookingId: id });
+    setModalState({
+      open: true,
+      type: "cancel",
+      bookingId: id,
+    });
   };
 
   const closeModal = () => {
-    setModalState({ open: false, type: "", bookingId: "" });
+    setModalState({
+      open: false,
+      type: "",
+      bookingId: "",
+    });
   };
 
   const handleModalConfirm = async (reason) => {
@@ -218,32 +230,30 @@ export default function BookingsPage() {
         body: JSON.stringify({ reason }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        let message = `Failed to ${modalState.type} booking.`;
-        try {
-          const data = await response.json();
-          message = data.message || message;
-        } catch {
-          // ignore
-        }
-        throw new Error(message);
+        throw new Error(
+          data.message ||
+            `Failed to ${modalState.type === "reject" ? "reject" : "cancel"} booking`
+        );
       }
 
-      setPageMessage({
-        type: "success",
-        text:
-          modalState.type === "reject"
-            ? "Booking rejected successfully."
-            : "Booking cancelled successfully.",
-      });
+      showMessage(
+        "success",
+        modalState.type === "reject"
+          ? "Booking rejected successfully."
+          : "Booking cancelled successfully."
+      );
 
       closeModal();
       await fetchBookings();
-    } catch (err) {
-      setPageMessage({
-        type: "error",
-        text: err.message || `Failed to ${modalState.type} booking.`,
-      });
+    } catch (error) {
+      showMessage(
+        "error",
+        error.message ||
+          `Failed to ${modalState.type === "reject" ? "reject" : "cancel"} booking`
+      );
     } finally {
       setActionLoading(false);
     }
@@ -260,24 +270,16 @@ export default function BookingsPage() {
         method: "DELETE",
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        let message = "Failed to delete booking.";
-        try {
-          const data = await response.json();
-          message = data.message || message;
-        } catch {
-          // ignore
-        }
-        throw new Error(message);
+        throw new Error(data.message || "Failed to delete booking");
       }
 
-      setPageMessage({ type: "success", text: "Booking deleted successfully." });
+      showMessage("success", "Booking deleted successfully.");
       await fetchBookings();
-    } catch (err) {
-      setPageMessage({
-        type: "error",
-        text: err.message || "Failed to delete booking.",
-      });
+    } catch (error) {
+      showMessage("error", error.message || "Failed to delete booking");
     } finally {
       setActionLoading(false);
     }
@@ -324,7 +326,7 @@ export default function BookingsPage() {
             <span className="uf-search-icon">⌕</span>
             <input
               type="text"
-              placeholder="Search by resource or purpose..."
+              placeholder="Search by resource, purpose, user, or status..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -348,10 +350,11 @@ export default function BookingsPage() {
             <thead>
               <tr>
                 <th>Resource</th>
+                <th>User</th>
                 <th>Date</th>
                 <th>Time</th>
                 <th>Purpose</th>
-                <th>Requested By</th>
+                <th>Attendees</th>
                 <th>Status</th>
                 <th className="uf-actions-col">Actions</th>
               </tr>
@@ -359,24 +362,25 @@ export default function BookingsPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="7" className="uf-empty-cell">
+                  <td colSpan="8" className="uf-empty-cell">
                     Loading bookings...
                   </td>
                 </tr>
-              ) : filteredRows.length === 0 ? (
+              ) : filteredBookings.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="uf-empty-cell">
+                  <td colSpan="8" className="uf-empty-cell">
                     No bookings found.
                   </td>
                 </tr>
               ) : (
-                filteredRows.map((item) => (
+                filteredBookings.map((item) => (
                   <tr key={item.id}>
-                    <td>{item.resource}</td>
+                    <td>{item.resourceId}</td>
+                    <td>{item.userId}</td>
                     <td>{item.date}</td>
                     <td>{item.time}</td>
                     <td>{item.purpose}</td>
-                    <td>{item.requestedBy}</td>
+                    <td>{item.expectedAttendees}</td>
                     <td>
                       <StatusBadge status={item.status} />
                     </td>
@@ -407,7 +411,6 @@ export default function BookingsPage() {
                             (item.status !== "PENDING" && item.status !== "APPROVED") ||
                             actionLoading
                           }
-                          title="Cancel"
                         >
                           Cancel
                         </button>
@@ -416,7 +419,6 @@ export default function BookingsPage() {
                           className="uf-text-action delete"
                           onClick={() => deleteBooking(item.id)}
                           disabled={actionLoading}
-                          title="Delete"
                         >
                           Delete
                         </button>
@@ -442,7 +444,7 @@ export default function BookingsPage() {
         </div>
       </div>
 
-      <ActionModal
+      <ReasonModal
         open={modalState.open}
         title={modalState.type === "reject" ? "Reject Booking" : "Cancel Booking"}
         label={
