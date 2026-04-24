@@ -79,7 +79,7 @@ public class ResourceService {
         return resourceRepository.findByLocation(location);
     }
 
-    // filter by capacity  
+    // filter by capacity
     public List<Resource> findByMinCapacity(int capacity) {
         return resourceRepository.findByCapacityGreaterThanEqual(capacity);
     }

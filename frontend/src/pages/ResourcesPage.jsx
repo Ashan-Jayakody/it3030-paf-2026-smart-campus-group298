@@ -26,8 +26,12 @@ export default function ResourcesPage() {
       setResources(res.data)
       setCatalog(cat.data || {})
       setError(null)
-    } catch {
-      setError('Cannot connect to the API. Make sure Spring Boot is running on port 8081.')
+    } catch (err) {
+      if (err.response?.status === 401) {
+        setError('Authentication required. Please sign in.')
+      } else {
+        setError('Cannot connect to the API. Make sure Spring Boot is running on port 8081.')
+      }
     } finally {
       setLoading(false)
     }
@@ -114,7 +118,7 @@ export default function ResourcesPage() {
   }
 
   const total = resources.length
-  const activeCount = resources.filter((r) => r.status === 'ACTIVE').length
+  const activeCount = resources.filter((r) => r.status === 'AVAILABLE').length
   const outCount = resources.filter((r) => r.status === 'OUT_OF_SERVICE').length
 
   return (
