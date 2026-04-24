@@ -1,10 +1,11 @@
-# it3030-paf-2026-smart-campus-group298
+# it3030-paf-2026-smart-campus-group142
 
 The **SmartCampus** project is a comprehensive full-stack solution designed for university campus management. It streamlines the process of booking campus facilities (lecture halls, labs, equipment) and managing maintenance incidents through a centralized digital platform.
 
 ##  Installation & Setup
 
-#### Clone the ropository
+#### Clone the ropository 
+`https://github.com/Ashan-Jayakody/it3030-paf-2026-smart-campus-group142.git`
 
 ### Backend (Spring Boot)
 1. Configure `application.properties` with your database credentials and Google OAuth Client ID/Secret.
