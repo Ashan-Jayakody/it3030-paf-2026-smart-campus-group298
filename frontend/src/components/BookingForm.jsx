@@ -77,6 +77,19 @@ export default function BookingForm({ onSubmit, loading, defaultUserId }) {
       newErrors.resourceId = "Selected resource is not available for booking";
     }
 
+    if (selectedResource && selectedResource.availabilityWindows) {
+      const parts = selectedResource.availabilityWindows.split('-');
+      if (parts.length === 2) {
+        const [from, to] = parts;
+        if (formData.startTime && formData.startTime < from) {
+          newErrors.startTime = `Must be after ${from} (available range: ${from} - ${to})`;
+        }
+        if (formData.endTime && formData.endTime > to) {
+          newErrors.endTime = `Must be before ${to} (available range: ${from} - ${to})`;
+        }
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };

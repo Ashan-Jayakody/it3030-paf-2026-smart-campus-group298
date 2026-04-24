@@ -342,7 +342,7 @@ export default function BookingsPage() {
   const [bookings, setBookings] = useState([]);
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("mine");
+  const [activeTab, setActiveTab] = useState(canManageBookings ? "all" : "mine");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [dateFilter, setDateFilter] = useState("");
@@ -804,20 +804,24 @@ export default function BookingsPage() {
         </div>
 
         <div className="uf-tabs">
-          <button
-            className={`uf-tab ${activeTab === "mine" ? "active" : ""}`}
-            onClick={() => setActiveTab("mine")}
-            type="button"
-          >
-            My Bookings
-          </button>
-          <button
-            className={`uf-tab ${activeTab === "all" ? "active" : ""}`}
-            onClick={() => setActiveTab("all")}
-            type="button"
-          >
-            All Bookings
-          </button>
+          {!canManageBookings && (
+            <button
+              className={`uf-tab ${activeTab === "mine" ? "active" : ""}`}
+              onClick={() => setActiveTab("mine")}
+              type="button"
+            >
+              My Bookings
+            </button>
+          )}
+          {canManageBookings && (
+            <button
+              className={`uf-tab ${activeTab === "all" ? "active" : ""}`}
+              onClick={() => setActiveTab("all")}
+              type="button"
+            >
+              All Bookings
+            </button>
+          )}
         </div>
 
         <div className="uf-summary-grid">

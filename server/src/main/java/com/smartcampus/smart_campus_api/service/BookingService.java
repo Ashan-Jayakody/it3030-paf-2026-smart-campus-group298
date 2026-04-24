@@ -43,6 +43,26 @@ public class BookingService {
             );
         }
 
+        if (resource.getAvailabilityWindows() != null && !resource.getAvailabilityWindows().isBlank()) {
+            String[] parts = resource.getAvailabilityWindows().split("-");
+            if (parts.length == 2) {
+                try {
+                    String p0 = parts[0].trim();
+                    String p1 = parts[1].trim();
+                    String fromStr = p0.length() == 5 ? p0 + ":00" : p0;
+                    String toStr = p1.length() == 5 ? p1 + ":00" : p1;
+                    java.time.LocalTime availableFrom = java.time.LocalTime.parse(fromStr);
+                    java.time.LocalTime availableTo = java.time.LocalTime.parse(toStr);
+                    
+                    if (request.getStartTime().isBefore(availableFrom) || request.getEndTime().isAfter(availableTo)) {
+                        throw new IllegalArgumentException("out of available time range (" + p0 + " - " + p1 + ")");
+                    }
+                } catch (java.time.format.DateTimeParseException e) {
+                    // Ignore parse errors from legacy data
+                }
+            }
+        }
+
         checkConflict(
                 request.getResourceId(),
                 request.getDate(),

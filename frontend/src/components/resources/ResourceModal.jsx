@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 
-const EMPTY = { name: '', type: 'HALL', capacity: '', location: '', availabilityWindows: '' }
+const EMPTY = { name: '', type: 'HALL', capacity: '', location: '', availableFrom: '', availableTo: '' }
 
 export default function ResourceModal({ isOpen, onClose, onSave, editData, catalog = {} }) {
   const [form,    setForm]    = useState(EMPTY)
@@ -15,7 +15,16 @@ export default function ResourceModal({ isOpen, onClose, onSave, editData, catal
       const type = initial.type || 'HALL'
       const presets = catalog?.[type] || []
       const name = initial.name || presets?.[0]?.label || ''
-      setForm({ ...initial, type, name })
+      let availableFrom = '';
+      let availableTo = '';
+      if (initial.availabilityWindows) {
+        const parts = initial.availabilityWindows.split('-');
+        if (parts.length === 2) {
+          availableFrom = parts[0];
+          availableTo = parts[1];
+        }
+      }
+      setForm({ ...initial, type, name, availableFrom, availableTo })
       setErrors({})
     })
   }, [editData, isOpen, catalog])
@@ -27,6 +36,11 @@ export default function ResourceModal({ isOpen, onClose, onSave, editData, catal
     if (!form.name.trim())              e.name     = 'Name is required'
     if (!form.location.trim())          e.location = 'Location is required'
     if (!form.capacity || form.capacity < 1) e.capacity = 'Capacity must be at least 1'
+    if (form.availableFrom && !form.availableTo) e.availableTo = 'Required'
+    if (!form.availableFrom && form.availableTo) e.availableFrom = 'Required'
+    if (form.availableFrom && form.availableTo && form.availableFrom >= form.availableTo) {
+      e.availableTo = 'Must be after start time'
+    }
     return e
   }
 
@@ -34,7 +48,10 @@ export default function ResourceModal({ isOpen, onClose, onSave, editData, catal
     const e = validate()
     if (Object.keys(e).length) { setErrors(e); return }
     setLoading(true)
-    await onSave({ ...form, capacity: parseInt(form.capacity) })
+    const availabilityWindows = (form.availableFrom && form.availableTo) 
+      ? `${form.availableFrom}-${form.availableTo}` 
+      : '';
+    await onSave({ ...form, capacity: parseInt(form.capacity), availabilityWindows })
     setLoading(false)
   }
 
@@ -108,14 +125,28 @@ export default function ResourceModal({ isOpen, onClose, onSave, editData, catal
             />
           </Field>
 
-          <Field label="Availability Windows">
-            <input
-              className={inputCls()}
-              placeholder="e.g. Mon-Fri 8am-6pm"
-              value={form.availabilityWindows}
-              onChange={e => setForm(f => ({ ...f, availabilityWindows: e.target.value }))}
-            />
-          </Field>
+          <div className="flex gap-4">
+            <div className="flex-1">
+              <Field label="Available From" error={errors.availableFrom}>
+                <input
+                  type="time"
+                  className={inputCls(errors.availableFrom)}
+                  value={form.availableFrom || ''}
+                  onChange={e => setForm(f => ({ ...f, availableFrom: e.target.value }))}
+                />
+              </Field>
+            </div>
+            <div className="flex-1">
+              <Field label="Available To" error={errors.availableTo}>
+                <input
+                  type="time"
+                  className={inputCls(errors.availableTo)}
+                  value={form.availableTo || ''}
+                  onChange={e => setForm(f => ({ ...f, availableTo: e.target.value }))}
+                />
+              </Field>
+            </div>
+          </div>
 
         </div>
 
