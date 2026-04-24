@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import axios from "axios";
+import httpClient from "../api/httpClient";
 
-const RESOURCE_API = "http://localhost:8080/api/resources";
+const RESOURCE_API = "/resources";
 
 export default function BookingForm({ onSubmit, loading, defaultUserId }) {
   const [resources, setResources] = useState([]);
@@ -23,7 +23,7 @@ export default function BookingForm({ onSubmit, loading, defaultUserId }) {
     const fetchResources = async () => {
       try {
         setResourceLoading(true);
-        const response = await axios.get(RESOURCE_API);
+        const response = await httpClient.get(RESOURCE_API);
         setResources(response.data || []);
       } catch (error) {
         console.error("Failed to load resources", error);

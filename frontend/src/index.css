@@ -1,6 +1,5 @@
-<<<<<<< HEAD
 @import "tailwindcss";
-=======
+
 html,
 body,
 #root {
@@ -15,4 +14,3 @@ body {
   background: #f4f7fb;
   font-family: Inter, Arial, Helvetica, sans-serif;
 }
->>>>>>> origin/varun

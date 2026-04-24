@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import httpClient from "../api/httpClient";
 
-const BOOKINGS_API = "http://localhost:8080/api/bookings";
-const RESOURCES_API = "http://localhost:8080/api/resources";
+const BOOKINGS_API = "/bookings";
+const RESOURCES_API = "/resources";
 const CURRENT_USER_ID = "USER-001";
 
 function Toast({ toast, onClose }) {
@@ -30,7 +31,7 @@ function normalizeResource(resource) {
       resource.code ||
       resource.id ||
       "Unnamed Resource",
-    status: resource.status || "ACTIVE",
+    status: resource.status || "AVAILABLE",
     capacity: resource.capacity ?? "",
     type: resource.type || "",
     location: resource.location || "",
@@ -170,20 +171,11 @@ export default function NewBookingPage() {
         setLoadingResources(true);
 
         const [resourcesResponse, bookingsResponse] = await Promise.all([
-          fetch(RESOURCES_API),
-          fetch(BOOKINGS_API),
+          httpClient.get(RESOURCES_API),
+          httpClient.get(BOOKINGS_API),
         ]);
-
-        if (!resourcesResponse.ok) {
-          throw new Error("Failed to load resources");
-        }
-
-        if (!bookingsResponse.ok) {
-          throw new Error("Failed to load bookings");
-        }
-
-        const resourcesData = await resourcesResponse.json();
-        const bookingsData = await bookingsResponse.json();
+        const resourcesData = resourcesResponse.data;
+        const bookingsData = bookingsResponse.data;
 
         const normalizedResources = Array.isArray(resourcesData)
           ? resourcesData.map(normalizeResource)
@@ -193,7 +185,7 @@ export default function NewBookingPage() {
           ? bookingsData.map(normalizeBooking)
           : [];
 
-        setResources(normalizedResources.filter((item) => item.status === "ACTIVE"));
+        setResources(normalizedResources.filter((item) => item.status === "AVAILABLE"));
         setBookings(normalizedBookings);
       } catch (error) {
         showToast("error", error.message || "Failed to load page data.");
@@ -463,19 +455,7 @@ export default function NewBookingPage() {
         expectedAttendees: Number(form.expectedAttendees),
       };
 
-      const response = await fetch(BOOKINGS_API, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to create booking");
-      }
+      await httpClient.post(BOOKINGS_API, payload);
 
       showToast("success", "Booking created successfully.");
 
@@ -483,7 +463,7 @@ export default function NewBookingPage() {
         navigate("/bookings");
       }, 900);
     } catch (error) {
-      showToast("error", error.message || "Failed to create booking");
+      showToast("error", error.response?.data?.message || error.message || "Failed to create booking");
     } finally {
       setSubmitting(false);
     }

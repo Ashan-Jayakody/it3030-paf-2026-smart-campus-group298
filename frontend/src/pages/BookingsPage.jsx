@@ -1,14 +1,6 @@
-<<<<<<< HEAD
-export default function BookingsPage() {
-  return (
-    <div className="max-w-7xl mx-auto px-6 py-8">
-      <h1 className="text-3xl font-extrabold text-slate-800">Bookings</h1>
-      <p className="text-slate-500 mt-1">Member 2 — coming soon</p>
-    </div>
-  )
-=======
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import httpClient from "../api/httpClient";
 import {
   Check,
   CircleAlert,
@@ -17,11 +9,11 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import { useAuth } from "../auth/useAuth";
 import "../styles/bookings.css";
 
-const BOOKINGS_API = "http://localhost:8080/api/bookings";
-const RESOURCES_API = "http://localhost:8080/api/resources";
-const CURRENT_USER_ID = "USER-001";
+const BOOKINGS_API = "/bookings";
+const RESOURCES_API = "/resources";
 
 function StatusBadge({ status }) {
   const safeStatus = (status || "PENDING").toLowerCase();
@@ -343,6 +335,10 @@ function sortBookings(list, sortBy) {
 }
 
 export default function BookingsPage() {
+  const { user, isAdmin, isManager } = useAuth();
+  const CURRENT_USER_ID = user?.id || user?.email || "USER-001";
+  const canManageBookings = isAdmin || isManager;
+
   const [bookings, setBookings] = useState([]);
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -414,16 +410,14 @@ export default function BookingsPage() {
   };
 
   const fetchResources = async () => {
-    const response = await fetch(RESOURCES_API);
-    if (!response.ok) throw new Error("Failed to load resources");
-    const data = await response.json();
+    const response = await httpClient.get(RESOURCES_API);
+    const data = response.data;
     setResources(Array.isArray(data) ? data.map(normalizeResource) : []);
   };
 
   const fetchBookings = async () => {
-    const response = await fetch(BOOKINGS_API);
-    if (!response.ok) throw new Error("Failed to load bookings");
-    const data = await response.json();
+    const response = await httpClient.get(BOOKINGS_API);
+    const data = response.data;
     setBookings(Array.isArray(data) ? data.map(normalizeBooking) : []);
   };
 
@@ -432,7 +426,7 @@ export default function BookingsPage() {
       setLoading(true);
       await Promise.all([fetchBookings(), fetchResources()]);
     } catch (error) {
-      showToast("error", error.message || "Failed to load page data");
+      showToast("error", error.response?.data?.message || error.message || "Failed to load page data");
     } finally {
       setLoading(false);
     }
@@ -601,20 +595,12 @@ export default function BookingsPage() {
     try {
       setActionLoading(true);
 
-      const response = await fetch(`${BOOKINGS_API}/${id}/approve`, {
-        method: "PATCH",
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to approve booking");
-      }
+      const response = await httpClient.patch(`${BOOKINGS_API}/${id}/approve`);
 
       showToast("success", "Booking approved successfully.");
       await loadPageData();
     } catch (error) {
-      showToast("error", error.message || "Failed to approve booking");
+      showToast("error", error.response?.data?.message || error.message || "Failed to approve booking");
     } finally {
       setActionLoading(false);
       closeConfirmModal();
@@ -630,22 +616,7 @@ export default function BookingsPage() {
           ? `${BOOKINGS_API}/${actionModalState.bookingId}/reject`
           : `${BOOKINGS_API}/${actionModalState.bookingId}/cancel`;
 
-      const response = await fetch(endpoint, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reason }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          data.message ||
-            `Failed to ${
-              actionModalState.type === "reject" ? "reject" : "cancel"
-            } booking`
-        );
-      }
+      const response = await httpClient.patch(endpoint, { reason });
 
       showToast(
         "success",
@@ -673,25 +644,12 @@ export default function BookingsPage() {
     try {
       setActionLoading(true);
 
-      const response = await fetch(`${BOOKINGS_API}/${id}`, {
-        method: "DELETE",
-      });
-
-      let data = {};
-      try {
-        data = await response.json();
-      } catch {
-        data = {};
-      }
-
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to delete booking");
-      }
+      await httpClient.delete(`${BOOKINGS_API}/${id}`);
 
       showToast("success", "Booking deleted successfully.");
       await loadPageData();
     } catch (error) {
-      showToast("error", error.message || "Failed to delete booking");
+      showToast("error", error.response?.data?.message || error.message || "Failed to delete booking");
     } finally {
       setActionLoading(false);
       closeConfirmModal();
@@ -1048,5 +1006,5 @@ export default function BookingsPage() {
       />
     </div>
   );
->>>>>>> origin/varun
+
 }

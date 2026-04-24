@@ -37,7 +37,6 @@ public class BookingService {
         }
 
         if (request.getExpectedAttendees() != null
-                && resource.getCapacity() != null
                 && request.getExpectedAttendees() > resource.getCapacity()) {
             throw new IllegalArgumentException(
                     "Expected attendees exceed resource capacity of " + resource.getCapacity()
