@@ -2,11 +2,11 @@ import { useState, useEffect, useCallback } from 'react'
 import StatCard from '../components/resources/StatCard'
 import ResourceCard from '../components/resources/ResourceCard'
 import ResourceModal from '../components/resources/ResourceModal'
-import { getAllResources, createResource, updateResource, deleteResource, getResourceCatalog } from '../api/resourceApi'
+import { getAllResources, createResource, updateResource, deleteResource, getResourceCatalog, updateResourceStatus } from '../api/resourceApi'
 import { useAuth } from '../auth/useAuth'
 
 export default function ResourcesPage() {
-  const { canManageResources } = useAuth()
+  const { canManageResources, isAdmin } = useAuth()
   const canManage = canManageResources
 
   const [resources, setResources] = useState([])
@@ -53,7 +53,12 @@ export default function ResourcesPage() {
 
   const handleSave = async (formData) => {
     if (!canManage) {
-      alert('ADMIN or MANAGER role required for resource management.')
+      alert('MANAGER or ADMIN role required for resource management.')
+      return
+    }
+
+    if (!editData && !isAdmin) {
+      alert('ADMIN role required to create resources.')
       return
     }
 
@@ -70,7 +75,7 @@ export default function ResourcesPage() {
 
   const handleDelete = async (id) => {
     if (!canManage) {
-      alert('ADMIN or MANAGER role required for resource management.')
+      alert('MANAGER or ADMIN role required for resource management.')
       return
     }
 
@@ -79,8 +84,25 @@ export default function ResourcesPage() {
     fetchResources()
   }
 
+  const handleStatusChange = async (id, newStatus) => {
+    if (!isAdmin) {
+      alert('ADMIN role required to change resource status.')
+      return
+    }
+
+    try {
+      await updateResourceStatus(id, newStatus)
+      fetchResources()
+    } catch {
+      alert('Error updating status.')
+    }
+  }
+
   const openAdd = () => {
-    if (!canManage) return
+    if (!isAdmin) {
+      alert('ADMIN role required to add resources.')
+      return
+    }
     setEditData(null)
     setModalOpen(true)
   }
@@ -180,6 +202,8 @@ export default function ResourcesPage() {
               onEdit={openEdit}
               onDelete={handleDelete}
               canManage={canManage}
+              isAdmin={isAdmin}
+              onStatusChange={handleStatusChange}
             />
           ))}
         </div>

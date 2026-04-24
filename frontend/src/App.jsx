@@ -4,6 +4,7 @@ import RequireAuth from './components/shared/RequireAuth'
 import Navbar from './components/shared/Navbar'
 import ResourcesPage from './pages/ResourcesPage'
 import BookingsPage from './pages/BookingsPage'
+import NewBookingPage from './pages/NewBookingPage'
 import TicketsPage from './pages/TicketsPage'
 import LoginPage from './pages/LoginPage'
 
@@ -18,6 +19,7 @@ export default function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/resources" element={<RequireAuth><ResourcesPage /></RequireAuth>} />
             <Route path="/bookings" element={<RequireAuth><BookingsPage /></RequireAuth>} />
+            <Route path="/bookings/new" element={<RequireAuth><NewBookingPage /></RequireAuth>} />
             <Route path="/tickets" element={<RequireAuth><TicketsPage /></RequireAuth>} />
           </Routes>
         </div>

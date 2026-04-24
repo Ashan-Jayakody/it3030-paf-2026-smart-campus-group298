@@ -30,12 +30,12 @@ public class ResourceService {
         if (!ResourceCatalog.isAllowed(resource.getType(), resource.getName())) {
             throw new IllegalArgumentException("Invalid resource name for type " + resource.getType());
         }
-        resource.setStatus(ResourceStatus.AVAILABLE);
+        resource.setStatus(ResourceStatus.OUT_OF_SERVICE);
         return resourceRepository.save(resource);
     }
 
     // PUT update existing resource
-    public Resource update(String id, Resource updatedResource) {
+    public Resource update(String id, Resource updatedResource, boolean isAdmin) {
         Resource existing = findById(id);
         if (!ResourceCatalog.isAllowed(updatedResource.getType(), updatedResource.getName())) {
             throw new IllegalArgumentException("Invalid resource name for type " + updatedResource.getType());
@@ -45,7 +45,16 @@ public class ResourceService {
         existing.setCapacity(updatedResource.getCapacity());
         existing.setLocation(updatedResource.getLocation());
         existing.setAvailabilityWindows(updatedResource.getAvailabilityWindows());
-        existing.setStatus(updatedResource.getStatus());
+        if (isAdmin) {
+            existing.setStatus(updatedResource.getStatus());
+        }
+        return resourceRepository.save(existing);
+    }
+
+    // PUT update status
+    public Resource updateStatus(String id, ResourceStatus newStatus) {
+        Resource existing = findById(id);
+        existing.setStatus(newStatus);
         return resourceRepository.save(existing);
     }
 
