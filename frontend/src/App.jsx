@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './auth/AuthContext.jsx'
 import RequireAuth from './components/shared/RequireAuth'
@@ -24,4 +25,21 @@ export default function App() {
       </BrowserRouter>
     </AuthProvider>
   )
+=======
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import BookingsPage from "./pages/BookingsPage";
+import NewBookingPage from "./pages/NewBookingPage";
+import "./styles/bookings.css";
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Navigate to="/bookings" replace />} />
+        <Route path="/bookings" element={<BookingsPage />} />
+        <Route path="/bookings/new" element={<NewBookingPage />} />
+      </Routes>
+    </BrowserRouter>
+  );
+>>>>>>> origin/varun
 }

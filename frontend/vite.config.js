@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+<<<<<<< HEAD
 import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
@@ -13,3 +14,10 @@ export default defineConfig({
     }
   }
 })
+=======
+
+// https://vite.dev/config/
+export default defineConfig({
+  plugins: [react()],
+})
+>>>>>>> origin/varun

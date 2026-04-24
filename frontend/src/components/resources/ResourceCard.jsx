@@ -22,7 +22,7 @@ const TYPE_LABEL = {
 export default function ResourceCard({ resource, onEdit, onDelete, canManage = false, isAdmin = false, onStatusChange }) {
   const badgeClass = TYPE_BADGE[resource.type] || 'bg-gray-100 text-gray-700'
   const borderClass = TYPE_BORDER[resource.type] || 'border-t-gray-400'
-  const isActive = resource.status === 'AVAILABLE'
+  const isActive = resource.status === 'ACTIVE'
 
   return (
     <div className={`bg-white rounded-2xl p-6 shadow-sm border border-gray-100 border-t-4 ${borderClass} flex flex-col gap-4 hover:-translate-y-1 hover:shadow-md transition-all duration-200`}>
@@ -40,7 +40,7 @@ export default function ResourceCard({ resource, onEdit, onDelete, canManage = f
             isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
           }`}
         >
-          {isActive ? 'AVAILABLE' : 'OUT OF SERVICE'}
+          {isActive ? 'Active' : 'Out of Service'}
         </span>
       </div>
 
@@ -61,14 +61,14 @@ export default function ResourceCard({ resource, onEdit, onDelete, canManage = f
         <div className="flex gap-2 mt-auto pt-2 border-t border-gray-100">
           {isAdmin && (
             <button
-              onClick={() => onStatusChange(resource.id, resource.status === 'AVAILABLE' ? 'OUT_OF_SERVICE' : 'AVAILABLE')}
+              onClick={() => onStatusChange(resource.id, resource.status === 'ACTIVE' ? 'OUT_OF_SERVICE' : 'ACTIVE')}
               className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-colors ${
-                resource.status === 'AVAILABLE'
+                resource.status === 'ACTIVE'
                   ? 'bg-rose-50 text-rose-600 border-rose-100 hover:bg-rose-100'
                   : 'bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-100'
               }`}
             >
-              {resource.status === 'AVAILABLE' ? 'OUT OF SERVICE' : 'AVAILABLE'}
+              {resource.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
             </button>
           )}
           <button
