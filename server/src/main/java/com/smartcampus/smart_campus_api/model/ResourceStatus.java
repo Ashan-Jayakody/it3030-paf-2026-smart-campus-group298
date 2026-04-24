@@ -1,6 +1,6 @@
 package com.smartcampus.smart_campus_api.model;
 
 public enum ResourceStatus {
-    ACTIVE,
+    AVAILABLE,
     OUT_OF_SERVICE
 }

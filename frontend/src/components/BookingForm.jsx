@@ -36,7 +36,7 @@ export default function BookingForm({ onSubmit, loading, defaultUserId }) {
   }, []);
 
   const activeResources = useMemo(() => {
-    return resources.filter((resource) => resource.status === "ACTIVE");
+    return resources.filter((resource) => resource.status === "AVAILABLE");
   }, [resources]);
 
   const selectedResource = useMemo(() => {
@@ -73,7 +73,7 @@ export default function BookingForm({ onSubmit, loading, defaultUserId }) {
       newErrors.expectedAttendees = `Attendees cannot exceed resource capacity (${selectedResource.capacity})`;
     }
 
-    if (selectedResource && selectedResource.status !== "ACTIVE") {
+    if (selectedResource && selectedResource.status !== "AVAILABLE") {
       newErrors.resourceId = "Selected resource is not available for booking";
     }
 

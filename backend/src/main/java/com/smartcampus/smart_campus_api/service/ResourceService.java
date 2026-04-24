@@ -29,7 +29,7 @@ public class ResourceService {
 
     public Resource createResource(Resource resource) {
         if (resource.getStatus() == null) {
-            resource.setStatus(ResourceStatus.ACTIVE);
+            resource.setStatus(ResourceStatus.AVAILABLE);
         }
         return resourceRepository.save(resource);
     }

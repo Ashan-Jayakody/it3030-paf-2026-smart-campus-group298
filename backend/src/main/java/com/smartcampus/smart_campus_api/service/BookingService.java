@@ -32,8 +32,8 @@ public class BookingService {
         Resource resource = resourceRepository.findById(request.getResourceId())
                 .orElseThrow(() -> new IllegalArgumentException("Resource not found"));
 
-        if (resource.getStatus() != ResourceStatus.ACTIVE) {
-            throw new IllegalArgumentException("Selected resource is not active");
+        if (resource.getStatus() != ResourceStatus.AVAILABLE) {
+            throw new IllegalArgumentException("Selected resource is not available");
         }
 
         if (request.getExpectedAttendees() != null
