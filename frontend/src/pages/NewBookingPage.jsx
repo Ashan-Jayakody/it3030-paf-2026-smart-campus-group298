@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import httpClient from "../api/httpClient";
+import { useAuth } from "../auth/useAuth";
 
 const BOOKINGS_API = "/bookings";
 const RESOURCES_API = "/resources";
-const CURRENT_USER_ID = "USER-001";
 
 function Toast({ toast, onClose }) {
   if (!toast.show) return null;
@@ -104,6 +104,8 @@ function hasTimeOverlap(startA, endA, startB, endB) {
 
 export default function NewBookingPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const CURRENT_USER_ID = user?.id || user?.email || "USER-001";
 
   const [resources, setResources] = useState([]);
   const [bookings, setBookings] = useState([]);

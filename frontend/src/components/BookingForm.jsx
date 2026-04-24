@@ -1,15 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import httpClient from "../api/httpClient";
+import { useAuth } from "../auth/useAuth";
 
 const RESOURCE_API = "/resources";
 
 export default function BookingForm({ onSubmit, loading, defaultUserId }) {
+  const { user } = useAuth();
+  const CURRENT_USER_ID = user?.id || user?.email || defaultUserId || "USER-001";
+  
   const [resources, setResources] = useState([]);
   const [resourceLoading, setResourceLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     resourceId: "",
-    userId: defaultUserId || "USER-001",
+    userId: CURRENT_USER_ID,
     date: "",
     startTime: "",
     endTime: "",
