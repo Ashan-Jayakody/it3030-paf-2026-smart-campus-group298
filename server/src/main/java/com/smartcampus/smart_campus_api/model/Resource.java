@@ -28,7 +28,7 @@ public class Resource {
 
     private String availabilityWindows;
 
-    private ResourceStatus status = ResourceStatus.AVAILABLE;
+    private ResourceStatus status = ResourceStatus.OUT_OF_SERVICE;
     
 
 }
