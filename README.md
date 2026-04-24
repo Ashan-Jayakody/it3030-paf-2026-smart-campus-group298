@@ -21,5 +21,5 @@ The **SmartCampus** project is a comprehensive full-stack solution designed for 
 ## Contributors
 - **IT23362376:** Facilities catalogue + resource management endpoints
 - **IT23347526:** Booking workflow + conflict checking
-- **Member 3:** Incident tickets + attachments + technician updates
-- **Member 4:** Notifications + role management + OAuth integration
+- **IT23333666:** Incident tickets + attachments + technician updates
+- **IT23352926:** Notifications + role management + OAuth integration
